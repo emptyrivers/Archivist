@@ -11,4 +11,6 @@
 ## SavedVariables: ACHV_DB
 
 Archivist.lua
-SimpleData.lua
+
+# builtin stores
+stores/simple.lua
