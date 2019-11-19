@@ -311,24 +311,24 @@ do -- function Archivist:DeArchive(compressed)
 		local firstChar = value:sub(1,1)
 		local remainder = value:sub(2)
 		if firstChar == "@" then
-		return true, "BOOL", remainder
+			return true, "BOOL", remainder
 		elseif firstChar == "$" then
-		return false, "BOOL", remainder
+			return false, "BOOL", remainder
 		elseif firstChar == "#" then
-		local num, rest = remainder:match("([^\\&,^@$#:]*)(.*)")
-		return tonumber(num), "NUMBER", rest
+			local num, rest = remainder:match("([^\\&,^@$#:]*)(.*)")
+			return tonumber(num), "NUMBER", rest
 		elseif firstChar == "^" then
-		local key, _, rest = parse(remainder, objectList)
-		return key, "KEY", rest
+			local key, _, rest = parse(remainder, objectList)
+			return key, "KEY", rest
 		elseif firstChar == ":" then
-		local val, _, rest = parse(remainder, objectList)
-		return val, "VALUE", rest
+			local val, _, rest = parse(remainder, objectList)
+			return val, "VALUE", rest
 		elseif firstChar == "&" then
-		local num, rest = remainder:match("([^\\&,^@$#:]*)(.*)")
-		return objectList[tonumber(num)], "OBJECT", rest
+			local num, rest = remainder:match("([^\\&,^@$#:]*)(.*)")
+			return objectList[tonumber(num)], "OBJECT", rest
 		else
-		local str, rest = value:match("([^\\&,^@$#:]*)(.*)")
-		return str:gsub(unused, escapify), "STRING", rest
+			local str, rest = value:match("([^\\&,^@$#:]*)(.*)")
+			return str:gsub(unused, escapify), "STRING", rest
 		end
 	end
 	local function deserialize(value)
