@@ -1,0 +1,13 @@
+#@retail@
+## Interface: 80205
+#@end-retail@
+#@non-retail@
+# ## Interface: 11302
+#@end-non-retail@
+## Title: Archivist
+## Author: emptyrivers
+## Version: @project-version@
+## Notes: Data storage for any occasion. Data given to the archivist is automatically packed and compressed.
+## SavedVariables: ACHV_DB
+
+Archivist.lua
