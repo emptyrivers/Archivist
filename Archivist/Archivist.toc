@@ -11,3 +11,4 @@
 ## SavedVariables: ACHV_DB
 
 Archivist.lua
+SimpleData.lua
