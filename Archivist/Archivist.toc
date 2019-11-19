@@ -7,7 +7,7 @@
 ## Title: Archivist
 ## Author: emptyrivers
 ## Version: @project-version@
-## Notes: Data storage for any occasion. Data given to the archivist is automatically packed and compressed.
+## Notes: Flexible data archive.
 ## SavedVariables: ACHV_DB
 
 Archivist.lua
