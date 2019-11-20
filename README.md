@@ -87,7 +87,16 @@ In most use cases, you will want to embed Archivist, so that your addon's archiv
 
 You may also use your addon's native SavedVariables file if you wish (instead of creating a secondary addon), but this will cause your addon to always load its archive from the disk, which may not be desirable.
 
-Now, embed Archivist into your addon. This can be easily done via an xml file, similar to how you would embed a library:
+Archivist follows the library standard (though it is [not a library](#archivist-is-not-a-library)) for making itself available to be embedded. To include Archivist in your addon, it is pretty easy if you already use other libraries.
+
+First, include Archivist as an external in your .pkgmeta file:
+
+```
+externals:
+  MyAddon/Embeds/Archivist: https://github.com/emptyrivers/Archivist
+```
+
+Then, in your embeds.xml (if you use one), you can include Archivist.xml:
 
 ```xml
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
@@ -97,7 +106,9 @@ Now, embed Archivist into your addon. This can be easily done via an xml file, s
 
 ```
 
-You may also load Archivist via your .toc file. It is recommended to load Archivist.xml instead of loading the lua files explicitly. This way, you do not have to worry about any directory structure changes internal to Archivist.
+That's it! Archivist is now available in your addon releases.
+
+You can also include Archivist via your .toc file instead, if you prefer.
 
 To use Archivist in your addon code:
 
@@ -264,6 +275,8 @@ Like every other project, Archivist can't do everything. The major restrictions 
 
 Specifically, when Archivist is embedded into your addon, then the Archivist field on your namespace table (the one you access with `local addon, ns = ...`) is set to the Archivist object. I don't expect many people have ever used that particular field on their namespace table, but please do be aware of this if you decide to use the archivist.
 
+For this reason, you also shouldn't embed Archivist in a library intended for 3rd party consumption via LibStub. Anybody who embeds your addon may not be expecting their namespace to be modified, and unexpected changes to the internal namespace is pretty rude to force on someone.
+
 ### Archivist Can't Store Everything
 
 Archivist is a WoW addon, and it cannot do anything that the WoW addon environment does not allow for. In practice, this means that Archivist cannot serialize functions or closures it receives, as there is no way to convert these to a string format. If your store type has functions which need to be stored (e.g. generated code), then instead of trying to archive the function directly, store all of the information which was used to generate the function, and in your Open procedure, re-generate the function based on the data image you receive.
@@ -272,10 +285,10 @@ Additionally, Archivist does not check for metatables. So, if your store type us
 
 ### Archivist is Not a Library
 
-In the WoW addon world, we are used to embedded code that is "library-style". That is, everyone shares the same code, and shares the same versioning. If the user installs two addons, both of which use the same embedded code of different versions, then the expectation is often that both addons use the latest version of this common code. This is where tools like LibStub and the Ace framework come into play. These are great when you just want to use code that somebody else already wrote, without worrying too much about implementation details. Archivist even uses this for compression, because I don't want to have to reinvent the wheel just to compress some data. Also, LibDeflate is really good.
+In the WoW addon world, we are used to embedded code that is "library-style". That is, everyone shares the same code, and shares the same versioning. This is where tools like LibStub and the Ace framework come into play. These are great when you just want to use code that somebody else already wrote, without worrying too much about implementation details. Archivist even uses this for compression, because I don't want to have to reinvent the wheel just to compress some data. Also, LibDeflate is really good.
 
-Archivist explicitly does not follow this pattern. In a slightly different world, Archivist might have been designed to fit the LibStub paradigm, but the specifics of the WoW AddOn environment (and what Archivist is supposed to do) make that the wrong pattern to follow, in my opinion. So, Archivist is instead designed as a service you may embed into your code, but it does not share its code or internal memory with other instances of Archivist in other addons. If a user installs two addons employ the Archivist, then you will have two independent instances of the Archivist service. These instances do not share prototype registrations, and they do not share archives (unless they were initialized with the same archive, which is also probably a bad idea). The prototypes may share the same code, if e.g. both were registered via some LibStub invocation. But if you want a particular store type, then you are responsible for registering that prototype. Don't rely on some other common addon registering the prototype for you, because it won't work.
+Archivist explicitly does **not** follow this pattern. In a slightly different world, Archivist might have been designed to fit the LibStub paradigm, but the specifics of the WoW AddOn environment (and what Archivist is supposed to do) make that the wrong pattern to follow, in my opinion. Instead, Archivist is a service you may embed into your code, but it does not share its code or internal memory with other instances of Archivist in other addons. Don't rely on some other commonly installed addon to register a store type you need for you. That's bad practice in any scenario, and it just won't work with Archivist.
 
-Also, don't register Archivist with LibStub. This will "work", in that you won't get any errors. But if somebody else does the same thing, then one of you will be unable to access your own archive, since Archivist is designed to be run and initialized by each addon independently for each instance. If a user installs two addons which both use Archivist like this, then nothing will seem amiss for a while until one of these addons is disabled and suddenly the other "loses" all of its data. Then you get angry users, and nobody likes angry users.
+Please don't register Archivist with LibStub. This will "work", in that you won't get any errors. But if somebody else does the same thing, then one of you will be unable to access your own archive, since Archivist is designed to be run and initialized by each addon independently for each instance. If a user installs two addons which both use Archivist like this, then nothing will seem amiss for a while until one of these addons is disabled and suddenly the other "loses" all of its data. Then you get angry users, and nobody likes angry users.
 
 You can set Archivist as a hard dependency in your .toc file, if you want to use a "global" archive. In this way, Archivist can behave nicely while still being "shared code". However, a global archive is like writing code with lots of global variables - not such a great idea. The standalone Archivist addon is distributed primarily so that it can be embedded into other addons easily via curseforge or packaging scripts, as well as for the use of individual users in private, non-shared setups that just need a place to store some data without too much hassle.
