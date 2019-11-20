@@ -8,7 +8,7 @@ local _, Archivist = ...
 -- super simple data store that just holds data
 
 local prototype = {
-	id = "simple",
+	id = "RawData",
 	version = 1,
 	Create = function() return {} end,
 	Open = function(store) return store end,
