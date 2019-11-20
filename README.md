@@ -105,6 +105,7 @@ Some use cases demand more sophisticated data management. Archivist can accomoda
 local prototpye = {
 	id = "MyStoreType",
 	version = 1,
+	exclusive = false,
 	Init = function() end, 
 	Create = function(...) end,
 	Open = function(data) end,
@@ -122,6 +123,9 @@ Prototype Fields are as follows:
   - Unique Identifier of the store type, e.g. `RawData`.
 - version
   - Version number of store type. Useful if the prototype changes in a backwards incompatible way, and archived data needs to be massaged before use.
+- exclusive
+  - If truthy, then attempting to open the same storeID will generate an error. an exclusive store type will have a bit more safety about data updates, but be slightly less convenient to use.
+  - If false (or unset), then Opening the same storeID multiple times will return the active store object that was previously generated.
 - Init
   - Initialize your prototype. If provided, then Init is always guaranteed to run exactly once per game session, before any other method is run.
 - Create
