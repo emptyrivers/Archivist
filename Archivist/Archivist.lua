@@ -1,3 +1,8 @@
+-- Copyright 2019 Allen Faure
+-- This addon is distributed under the GNU General Public license version 3.0
+-- You should have received a copy of the GNU General Public License
+-- along with this addon.  If not, see https://www.gnu.org/licenses/.
+
 local addonName, Archivist = "Archivist", {}
 -- Our only library!
 local LibDeflate = LibStub("LibDeflate")
