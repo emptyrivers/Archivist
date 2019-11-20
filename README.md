@@ -99,6 +99,62 @@ Now, you may use the Archivist just like you would if it had been installed in a
 
 ## Create New Store Types
 
+Some use cases demand more sophisticated data management. Archivist can accomodate this need, with custom Store Types:
+
+```lua
+local prototpye = {
+	id = "MyStoreType",
+	version = 1,
+	Init = function() end, 
+	Create = function(...) end,
+	Open = function(data) end,
+	Update = function(data) end,
+	Commit = function(store) end,
+	Close = function(store) end,
+}
+
+Archivist:RegisterStoreType(prototype)
+```
+
+Prototype Fields are as follows:
+
+- id
+  - Unique Identifier of the store type, e.g. `RawData`.
+- version
+  - Version number of store type. Useful if the prototype changes in a backwards incompatible way, and archived data needs to be massaged before use.
+- Init
+  - Initialize your prototype. If provided, then Init is always guaranteed to run exactly once per game session, before any other method is run.
+- Create
+  - Create a new, empty, store object. Extra arguments passed into Archivist:Create will be passed into this function if you wish to accomodate initial setup of the store object.
+  - Must return non-nil store object.
+- Open
+  - Create from data an active store object.
+  - Must return non-nil store object
+- Update
+  - Optional function. If provided, then archived data is replaced with the return value of Update. If no change is needed, then return nil.
+- Commit
+  - Return image of data to be archived
+- Close
+  - Deactivate store. Returned value will be written to archive. If no update to archive is needed, then return nil.
+  - Once close is called on a store, Archivist will not update the archived data again unless the store is opened.
+
+### Store Type Methods Should be Functional
+
+With the exception of Init, all of these functions may be called at any time without warning. Thus, they should ideally be written as close to purely functional as possible, with few-to-no side effects. If you must have side effects, then do your best to write functions whose side effects are idempotent. This will help you avoid weird problems from functions being called in an order you didn't expect, and other hard-to-debug behaviors.
+
+### Re-registering prototypes
+
+If multiple independent codebases share an archive, and they both register the same store type, then what happens depends on the version number:
+
+- If the second registration has equal or lower version number, then the second registration is ignored. 
+- If the second registration has a higher version number, then:
+  - Each active store is Closed using the old Close method
+  - Each Archived store is Updated using the new Update method if provided
+  - The new Init method is run.
+  - Any previously open stores are opened.
+
+Re-registering a store type is generally not recommended, as you risk data loss and other errors. If you are using a store type in a shared archive which you expect to be registered multiple times (e.g. by independent custom code auras in WeakAuras), then it is recommended to only keep stores of that type open for the time that you need them to be open. Alternatively, design the Initialization routine such that it can broadcast the re-initialization, so that any store which was previously open can be re-obtained.
+
 ## Full API List
 
 ```lua
@@ -116,7 +172,7 @@ Archivist:RegisterStoreType(prototype)
 -- 	These are the main "actions" that archivist does.
 
 -- Creates a new archive, and returns an active store object. Raises an error if archive already exists. In most cases you'll want to use Load instead.
-store = Archivist:Create(storeType, storeID)
+store = Archivist:Create(storeType, storeID, ...)
 -- or... (though rarely useful)
 store, storeID = Archivist:Create(storeType)
 
