@@ -126,8 +126,11 @@ Prototype Fields are as follows:
 - exclusive
   - If truthy, then attempting to open the same storeID will generate an error. an exclusive store type will have a bit more safety about data updates, but be slightly less convenient to use.
   - If false (or unset), then Opening the same storeID multiple times will return the active store object that was previously generated.
+
+Prototype methods:
+
 - Init
-  - Initialize your prototype. If provided, then Init is always guaranteed to run exactly once per game session, before any other method is run.
+  - Optional function. Initialize your prototype. If provided, then Init is always guaranteed to run exactly once per game session, before any other method is run.
 - Create
   - Create a new, empty, store object. Extra arguments passed into Archivist:Create will be passed into this function if you wish to accomodate initial setup of the store object.
   - Must return non-nil store object.
