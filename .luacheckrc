@@ -1,5 +1,6 @@
 exclude_files = {
-	".luacheckrc"
+	".luacheckrc",
+	"Archivist/libs/*",
 }
 globals = {
 	"Archivist",
