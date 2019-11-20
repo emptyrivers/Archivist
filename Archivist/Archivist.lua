@@ -3,6 +3,7 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this addon.  If not, see https://www.gnu.org/licenses/.
 
+local embedder, namespace = ...
 local addonName, Archivist = "Archivist", {}
 -- Our only library!
 local LibDeflate = LibStub("LibDeflate")
@@ -15,10 +16,10 @@ do -- boilerplate & static values
 
 	Archivist.activeStores = {}
 
-	if addonName == "Archivist" then
+	if embedder == "Archivist" then
+		-- Archivist is installed as a standalone addon.
+		-- The Archive is in the default location, ACHV_DB
 		_G.Archivist = Archivist
-		-- if addonName is *not* Archivist then Archivist has been embedded into a different addon.
-		-- Therefore we have no idea where the archive is located, and creating this frame is pointless.
 		local SVframe = CreateFrame("frame")
 		SVframe:RegisterEvent("ADDON_LOADED")
 		SVframe:RegisterEvent("PLAYER_LOGOUT")
@@ -34,6 +35,11 @@ do -- boilerplate & static values
 				Archivist:CloseAllStores()
 			end
 		end)
+	else
+		-- if embedder is *not* Archivist then Archivist has been embedded into a different addon.
+		-- Therefore we have no idea where the archive is located
+		-- Make Archivist available to embedder.
+		namespace.Archivist = Archivist
 	end
 end
 
