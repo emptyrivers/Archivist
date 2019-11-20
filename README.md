@@ -2,9 +2,28 @@
 
 Archivist is a flexible data storage service for WoW AddOns. It is designed especially for addons which need to store a large amount of data, but only occasionally read or update this data. Data given to the archivist is stored in SavedVariables in a compressed format, to minimize addon load time.
 
-## Usage
+## Table of Contents
+
+- [Archivist](#archivist)
+	- [Table of Contents](#table-of-contents)
+	- [Using Archivist](#using-archivist)
+		- [Getting Started](#getting-started)
+		- [Included Store Types](#included-store-types)
+		- [Embedding the Archivist](#embedding-the-archivist)
+	- [Custom Store Types](#custom-store-types)
+		- [Store Type Methods Should be Functional](#store-type-methods-should-be-functional)
+		- [Re-registering prototypes](#re-registering-prototypes)
+	- [Full API List](#full-api-list)
+	- [Limitations and "Gotchas"](#limitations-and-%22gotchas%22)
+		- [Archivist Modifies Your Addon's Namespace](#archivist-modifies-your-addons-namespace)
+		- [Archivist Can't Store Everything](#archivist-cant-store-everything)
+		- [Archivist is Not a Library](#archivist-is-not-a-library)
+
+## Using Archivist
 
 Using the archivist is very simple. If you just wish to use the global archive, then install Archivist as a standalone addon. Note that if you use the global archive, it is recommended to set Archivist as a dependency in your .toc file.
+
+### Getting Started
 
 First, load your data store from the archive:
 
@@ -97,7 +116,7 @@ Archivist:Initialize(MyArchiveSaved)
 
 Now, you may use the Archivist just like you would if it had been installed in a standalone form.
 
-## Create New Store Types
+## Custom Store Types
 
 Some use cases demand more sophisticated data management. Archivist can accomodate this need, with custom Store Types:
 
