@@ -51,7 +51,9 @@ All open stores are automatically closed and archived on `PLAYER_LOGOUT`. You sh
 Archivist comes prepackaged with some basic store types, both for basic uses and as an example for implementing your own. They are listed here:
 
 - RawData
-  - A simple table with no extra
+  - A simple table with no extra bells or whistles. The contents of this table are stored directly into the archive when this archive is committed or closed.
+- Store
+  - Similar to RawData, but with Commit, Close, Clone functions grafted on. These are aliases to the corresponding Archivist verbs, provided for convenience.
 
 ### Embedding the Archivist
 
@@ -81,10 +83,10 @@ You may also load Archivist via your .toc file. It is recommended to load Archiv
 To use Archivist in your addon code:
 
 ```lua
-local _, addon = ...
+local addon, ns = ...
 
 -- Note that Archivist embeds itself in your addon's namespace.
-local Archivist = addon.Archivist
+local Archivist = ns.Archivist
 
 -- when you have need to access the archive, then load the data...
 LoadAddOn("MyArchive")
@@ -172,9 +174,13 @@ data = Archivist:DeArchive(compressedString)
 Archivist:CloseAllStores()
 ```
 
-## Limitations
+## Limitations and "Gotchas"
 
 Like every other project, Archivist can't do everything. The major restrictions (and consequences of these limitations) are described here.
+
+### Archivist Modifies Your Addon's Namespace
+
+Specifically, when Archivist is embedded into your addon, then the Archivist field on your namespace table (the one you access with `local addon, ns = ...`) is set to the Archivist object. I don't expect many people have ever used that particular field on their namespace table, but please do be aware of this if you decide to use the archivist.
 
 ### Archivist Can't Store Everything
 
