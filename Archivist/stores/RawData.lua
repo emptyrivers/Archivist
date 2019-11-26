@@ -10,7 +10,12 @@ local _, Archivist = ...
 local prototype = {
 	id = "RawData",
 	version = 1,
-	Create = function() return {} end,
+	Create = function(data)
+		if type(data) ~= "table" then
+			data = {}
+		end
+		return data, data
+	end,
 	Open = function(store) return store end,
 	Commit = function(store) return store end,
 	Close = function(store) return store end,

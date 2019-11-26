@@ -135,7 +135,6 @@ Some use cases demand more sophisticated data management. Archivist can accomoda
 local prototpye = {
 	id = "MyStoreType",
 	version = 1,
-	exclusive = false,
 	Init = function() end, 
 	Create = function(...) end,
 	Open = function(data) end,
@@ -153,9 +152,6 @@ Prototype Fields are as follows:
   - Unique Identifier of the store type, e.g. `RawData`.
 - version
   - Version number of store type. Useful if the prototype changes in a backwards incompatible way, and archived data needs to be massaged before use.
-- exclusive
-  - If truthy, then attempting to open the same storeID will generate an error. an exclusive store type will have a bit more safety about data updates, but be slightly less convenient to use.
-  - If false (or unset), then Opening the same storeID multiple times will return the active store object that was previously generated.
 
 Prototype methods:
 
@@ -200,6 +196,8 @@ Re-registering a store type is generally not recommended, as you risk data loss 
 
 -- Opens (or creates) the given store. This is the main entry point for your addon's code.
 store = Archivist:Load(storeType, storeID)
+-- or... (though rarely useful - if storeID is nil then Load is an alias for Create)
+store, storeID = Archivist:Load(storeType)
 
 -- Register store type. Store type must be registered before an archive can be accessed. All verbs will raise an error if called with an unregistered storeType.
 Archivist:RegisterStoreType(prototype)
@@ -214,7 +212,7 @@ store = Archivist:Create(storeType, storeID, ...)
 store, storeID = Archivist:Create(storeType)
 
 -- Opens an archive, and returns active store object. Raises an error if archive doesn't yet exist. In most cases you'll want to use Load instead.
-store = Archivist:Opent(storeType, storeID)
+store = Archivist:Open(storeType, storeID)
 
 -- Commit to archive without closing store. This will cause a change in the archive.
 -- 	Store is still considered open after committing it.
@@ -265,6 +263,7 @@ data = Archivist:DeArchive(compressedString)
 
 -- Close all stores immediately. Automatically called on PLAYER_LOGOUT. Not usually useful for addons using 
 Archivist:CloseAllStores()
+
 ```
 
 ## Limitations and "Gotchas"

@@ -1,0 +1,4 @@
+package-as: Archivist
+
+move-folders:
+	Archivist/Archivist: Archivist

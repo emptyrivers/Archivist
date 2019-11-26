@@ -11,11 +11,13 @@ local LibDeflate = LibStub("LibDeflate")
 do -- boilerplate & static values
 	Archivist.buildDate = "@build-time@"
 	Archivist.version = "@project-version@"
+	--@debug@
+		Archivist.debug = true
+	--@end-debug@
 
 	Archivist.prototypes = {}
 
 	Archivist.activeStores = {}
-
 	if embedder == "Archivist" then
 		-- Archivist is installed as a standalone addon.
 		-- The Archive is in the default location, ACHV_DB
@@ -23,22 +25,22 @@ do -- boilerplate & static values
 		local SVframe = CreateFrame("frame")
 		SVframe:RegisterEvent("ADDON_LOADED")
 		SVframe:RegisterEvent("PLAYER_LOGOUT")
-		SVframe:SetScript("OnEvent", function(_, event, addon)
+		SVframe:SetScript("OnEvent", function(self, event, addon)
 			if event == "ADDON_LOADED" then
 				if addon == addonName then
 					if type(ACHV_DB) ~= "table" then
 						ACHV_DB = {}
 					end
 					Archivist:Initialize(ACHV_DB)
+					self:UnregisterEvent("ADDON_LOADED")
 				end
 			elseif event == "PLAYER_LOGOUT" then
 				Archivist:CloseAllStores()
 			end
 		end)
 	else
-		-- if embedder is *not* Archivist then Archivist has been embedded into a different addon.
-		-- Therefore we have no idea where the archive is located
-		-- Make Archivist available to embedder.
+		-- if embedder is *not* Archivist then Archivist we have no idea where the archive is located
+		-- Make Archivist available to embedder and wait for embedder to initialize.
 		namespace.Archivist = Archivist
 	end
 end
@@ -54,11 +56,11 @@ function Archivist:Assert(valid, pattern, ...)
 end
 
 function Archivist:Warn(valid, pattern, ...) -- Like assert, but doesn't interrupt execution
-	if not valid then
+	if not valid and self.debug then
 		if pattern then
-		print(pattern:format(...), 2)
+			print(pattern:format(...), 2)
 		else
-		print("Archivist encountered an unknown warning.")
+			print("Archivist encountered an unknown warning.")
 		end
 		return true
 	end
@@ -70,13 +72,16 @@ end
 
 -- Give Archivist its archive to play with. Called automatically, unless Archivist has been embedded.
 function Archivist:Initialize(sv)
-	self:Assert(not self:IsInitialized(), "Archivist has already been initialized.")
-	self:Assert(type(sv) == "table", "Attempt to initialize Archivist SavedVariables with a %q instead of a table.", type(sv))
+	do -- arg validation
+		self:Assert(not self:IsInitialized(), "Archivist has already been initialized.")
+		self:Assert(type(sv) == "table", "Attempt to initialize Archivist SavedVariables with a %q instead of a table.", type(sv))
+	end
+
 	self.sv = sv
 	self.initialized = true
-	for _, prototype in pairs(self.prototypes) do
-		self.sv[prototype.id] = self.sv[prototype.id] or {}
-		prototype:Init(self.sv[prototype.id])
+	for id, prototype in pairs(self.prototypes) do
+		self.sv[id] = self.sv[id] or {}
+		prototype:Init()
 	end
 end
 
@@ -93,31 +98,64 @@ end
 -- Please note that Create, Open, Update (if provided), Commit, and Close may be called at any time if Archivist deems it necessary.
 -- Thus, these methods should ideally be as close to purely functional as is practical, to minimize friction.
 function Archivist:RegisterStoreType(prototype)
-	self:Assert(type(prototype) == "table", "Invalid argument #1 to RegisterStoreType: Expected table, got %q instead.", type(prototype))
-	-- prototype is now guaranteed to be indexable
-	self:Assert(type(prototype.id) == "string", "Invalid prototype field 'id': Expected string, got %q instead.", type(prototype.id))
-	self:Assert(type(prototype.version) == "number", "Invalid prototype field 'version': Expected number, got %q instead.", type(prototype.version))
-	if self:Warn(prototype.version > 0 and prototype.version == math.floor(prototype.version),
-		"Prototype %q version expected to be a positive integer, but got %d instead.", prototype.id, prototype.version) then
-		return
+	do -- prototype validation
+		self:Assert(type(prototype) == "table", "Invalid argument #1 to RegisterStoreType: Expected table, got %q instead.", type(prototype))
+		-- prototype is now guaranteed to be indexable
+		self:Assert(type(prototype.id) == "string", "Invalid prototype field 'id': Expected string, got %q instead.", type(prototype.id))
+		self:Assert(type(prototype.version) == "number", "Invalid prototype field 'version': Expected number, got %q instead.", type(prototype.version))
+		if self:Warn(prototype.version > 0 and prototype.version == math.floor(prototype.version),
+			"Prototype %q version expected to be a positive integer, but got %d instead.", prototype.id, prototype.version) then
+			return
+		end
+		local oldPrototype = self.prototypes[prototype.id]
+		self:Assert(not oldPrototype or prototype.version >= oldPrototype.version, "Store type %q already exists with a higher version", oldPrototype and oldPrototype.version)
+		-- prototype is now guaranteed to be either new or an Update to existing prototype
+		self:Assert(prototype.Init == nil or type(prototype.Init) == "function", "Invalid prototype field 'Init': Expected function, got %q instead.", type(prototype.Init))
+		self:Assert(type(prototype.Create) == "function", "Invalid prototype field 'Create': Expected function, got %q instead.", type(prototype.Create))
+		self:Assert(type(prototype.Open) == "function", "Invalid prototype field 'Open': Expected function, got %q instead.", type(prototype.Open))
+		self:Assert(prototype.Update == nil or type(prototype.Update) == "function", "Invalid prototype field 'Update': Expected function, got %q instead.", type(prototype.Update))
+		self:Assert(type(prototype.Commit) == "function", "Invalid prototype field 'Commit': Expected function, got %q instead.", type(prototype.Commit))
+		self:Assert(type(prototype.Close) == "function", "Invalid prototype field 'Close': Expected function, got %q instead.", type(prototype.Close))
+		-- prototype is now guaranteed to have Init, Create, Open, Update functions, and is thus well-formed.
 	end
-	local oldStoreType = self.prototypes[prototype.id]
-	self:Assert(not oldStoreType or prototype.version >= oldStoreType.version, "Store type %q already exists with a higher version", oldStoreType and oldStoreType.version)
-	-- prototype is now guaranteed to be either new or an Update to existing prototype
-	self:Assert(prototype.Init == nil or type(prototype.Init) == "function", "Invalid prototype field 'Init': Expected function, got %q instead.", type(prototype.Init))
-	self:Assert(type(prototype.Create) == "function", "Invalid prototype field 'Create': Expected function, got %q instead.", type(prototype.Create))
-	self:Assert(type(prototype.Open) == "function", "Invalid prototype field 'Open': Expected function, got %q instead.", type(prototype.Open))
-	self:Assert(prototype.Update == nil or type(prototype.Update) == "function", "Invalid prototype field 'Update': Expected function, got %q instead.", type(prototype.Update))
-	self:Assert(type(prototype.Commit) == "function", "Invalid prototype field 'Commit': Expected function, got %q instead.", type(prototype.Commit))
-	self:Assert(type(prototype.Close) == "function", "Invalid prototype field 'Close': Expected function, got %q instead.", type(prototype.Close))
-	-- prototype is now guaranteed to have Init, Create, Open, Update functions, and is thus well-formed.
-	self.prototypes[prototype.id] = prototype
+
+	local oldPrototype = self.prototypes[prototype.id] -- need in case of closing active stores
+	self.prototypes[prototype.id] = {
+		id = prototype.id,
+		version = prototype.version,
+		Init = prototype.Init,
+		Create = prototype.Create,
+		Update = prototype.Update,
+		Open = prototype.Open,
+		Commit = prototype.Commit,
+		Close = prototype.Close
+	}
 	self.activeStores[prototype.id] = self.activeStores[prototype.id] or {}
 	if self:IsInitialized() then
 		self.sv[prototype.id] = self.sv[prototype.id] or {}
 		prototype:Init()
-		for _, store in pairs(self.activeStores[prototype.id]) do
-		self.activeStores = prototype:Update(store)
+		-- if prototype was previously registered, and Archivist is initialized, then there may be open stores of the old prototype.
+		-- Close them, Update if necessary, then re-Open them with the new prototype.
+		if oldPrototype then
+			for storeID, store in pairs(self.activeStores[prototype.id]) do
+				local image = oldPrototype:Close(store)
+				local shouldReArchive = image ~= nil
+				if image == nil then
+					image = self.sv[prototype.id][storeID]
+				end
+				if prototype.Update then
+					local newImage = prototype:Update(image)
+					if newImage ~= nil then
+						image = newImage
+						shouldReArchive = true
+					end
+				end
+				self.activeStores[prototype.id][storeID] = prototype:Open(image)
+				if shouldReArchive then
+					-- a meaningful change to saved data has occurred.
+					self.sv[prototype.id][storeID] = self:Archive(image)
+				end
+			end
 		end
 	end
 end
@@ -137,31 +175,54 @@ end
 -- creates and opens a new store of the given store type and with the given id (if given)
 -- store objects are lightly managed by Archivist. On PLAYER_LOGOUT, all open stores are Closed,
 -- and the resultant data is compressed into the archive.
-function Archivist:Create(storeType, id)
-	self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before loading data.")
-	self:Assert(id == nil or type(id) == "string" and not self.sv[storeType][id], "A storeType already exists with that id. Did you mean to call Archivist:Open?")
-	local store = self.prototypes[storeType]:Create()
-	self:Assert(type(store) == "table", "Failed to create a new store of type %q.", storeType)
+function Archivist:Create(storeType, id, ...)
+	do -- arg validation
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before loading data.")
+		self:Assert(id == nil or type(id) == "string" and not self.sv[storeType][id], "A storeType already exists with that id. Did you mean to call Archivist:Open?")
+	end
+
+	local store, image = self.prototypes[storeType]:Create(...)
+	do -- ensure that store exists and is unique
+		self:Assert(store ~= nil, "Failed to create a new store of type %q.", storeType)
+		self:Assert(self.storeMap[store] == nil, "Store Type %q produced an store object already registered with Archivist instead of creating a new one.", storeType)
+	end
+
+	self.activeStores[storeType][id] = store
+	self.storeMap[store] = {id = id, prototype = self.prototypes[storeType], type = storeType}
+
 	if id == nil then
 		id = self:GenerateID()
 	end
-	self.activeStores[storeType][id] = store
-	return store
+
+	if image == nil then
+		-- save initial image via Commit
+		image = self.prototypes[storeType]:Commit(store)
+	end
+	if image ~= nil then
+		self.sv[storeType] = self:Archive(image)
+	end
+
+	return store, id
 end
 
 -- clones archived data and/or active store object to newId
 -- also provides an active store object of the cloned data if openStore is set
 function Archivist:Clone(storeType, id, newId, openStore)
-	self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered to clone a store.")
-	self:Assert(type(id) == "string" and (self.sv[storeType][id] or self.activeStores[storeType][id]), "Unable to clone store: store not found.")
+	do -- arg validation
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered to clone a store.")
+		self:Assert(type(id) == "string" and (self.sv[storeType][id] or self.activeStores[storeType][id]), "Unable to clone store: store not found.")
+	end
+
 	if type(newId) ~= "string" then
 		newId = self:GenerateID()
 	end
+
 	self:Assert(not self.sv[storeType][newId], "Store with ID %q already exists. Choose a different ID.")
 	if self.activeStores[storeType][id] then
 		-- go ahead and commit active store
 		self:Commit(storeType, id)
 	end
+
 	-- thankfully, strings are easy to copy
 	self.sv[storeType][newId] = self.sv[storeType][id]
 	if openStore then
@@ -169,14 +230,29 @@ function Archivist:Clone(storeType, id, newId, openStore)
 	end
 end
 
+function Archivist:CloneStore(store, newId, openStore)
+	self:Assert(self.storeMap[store], "Unrecognized store was provided.")
+	local info = self.storeMap[store]
+	return self:Clone(info.type, info.id, newId, openStore)
+end
+
 -- deletes archived data if store is not currently open
--- can be overridden
+-- Deleting unregistered store types must be done via setting force
 function Archivist:Delete(storeType, id, force)
-	self:Warn(force or type(storeType == "string") and self.sv[storeType], "There are no stores to delete.")
-	self:Assert(force or self.prototypes[storeType], "Store type should be registered before deleting a store. Call Delete again with arg #3 == true to override this.")
+	do -- arg validation
+		self:Warn(force or type(storeType == "string") and self.sv[storeType], "There are no stores to delete.")
+		self:Assert(force or self.prototypes[storeType], "Store type should be registered before deleting a store. Call Delete again with arg #3 == true to override this.")
+	end
+
 	if id and storeType and self.sv[storeType] then
 		self.sv[storeType][id] = nil
 	end
+end
+
+function Archivist:DeleteStore(store, force)
+	self:Assert(self.storeMap[store], "Unrecognized store was provided.")
+	local info = self.storeMap[store]
+	return self:Delete(info.type, info.id, force)
 end
 
 -- unpacks data in the archive into an active store object
@@ -201,8 +277,11 @@ end
 
 -- deactivates store, with one last opportunity to commit data if the prototype chooses to do so
 function Archivist:Close(storeType, id)
-	self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Closing a store of an unregistered store type doesn't make sense.")
-	self:Warn(type(id) == "string" and self.activeStores[storeType][id], "No store with that ID can be found.")
+	do -- arg validation
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Closing a store of an unregistered store type doesn't make sense.")
+		self:Warn(type(id) == "string" and self.activeStores[storeType][id], "No store with that ID can be found.")
+	end
+
 	local store = self.activeStores[storeType][id]
 	if store then
 		local image = self.prototypes[storeType]:Close(store)
@@ -211,6 +290,12 @@ function Archivist:Close(storeType, id)
 		end
 		self.activeStores[storeType][id] = nil
 	end
+end
+
+function Archivist:CloseStore(store)
+	self:Assert(self.storeMap[store], "Unrecognized store was provided.")
+	local info = self.storeMap[store]
+	return self:Close(info.type, info.id)
 end
 
 function Archivist:CloseAllStores()
@@ -227,18 +312,32 @@ end
 
 -- archives an image of the store object
 function Archivist:Commit(storeType, id)
-	self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Committing a store of an unregistered store type doesn't make sense.")
-	self:Assert(type(id) == string and self.activeStores[storeType][id], "No store with that ID can be found.")
+	do -- arg validation
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Committing a store of an unregistered store type doesn't make sense.")
+		self:Assert(type(id) == string and self.activeStores[storeType][id], "No store with that ID can be found.")
+	end
+
 	local store = self.activeStores[storeType][id]
 	local image = self.prototypes[storeType][id]:Commit(store)
-	self.sv[storeType][id] = self:Archive(image)
+	if image ~= nil then
+		self.sv[storeType][id] = self:Archive(image)
+	end
+end
+
+function Archivist:CommitStore(store)
+	self:Assert(self.storeMap[store], "Unrecognized store was provided.")
+	local info = self.storeMap[store]
+	return self:Commit(info.type, info.id)
 end
 
 -- opens or creates a storeType, depending on what is appropriate
 -- this is the main entry point for other addons who just want their saved data
 function Archivist:Load(storeType, id)
-	self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before loading data.")
-	self:Assert(id == nil or type(id) == "string", "Store ID must be a string if provided.")
+	do -- arg validation
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before loading data.")
+		self:Assert(id == nil or type(id) == "string", "Store ID must be a string if provided.")
+	end
+
 	if id == nil or not self.sv[storeType][id] then
 		return self:Create(storeType, id)
 	elseif self.activeStores[storeType][id] then
@@ -295,7 +394,8 @@ do -- function Archivist:Archive(data)
 	function Archivist:Archive(data)
 		local serialized = serialize(data)
 		local compressed = LibDeflate:CompressDeflate(serialized)
-		return compressed
+		local encoded = LibDeflate:EncodeForPrint(compressed)
+		return encoded
 	end
 end
 
@@ -375,7 +475,8 @@ do -- function Archivist:DeArchive(compressed)
 		return deserialized
 	end
 
-	function Archivist:DeArchive(compressed)
+	function Archivist:DeArchive(encoded)
+		local compressed = LibDeflate:DecodeForPrint(encoded)
 		local serialized = LibDeflate:DecompressDeflate(compressed)
 		local data = deserialize(serialized)
 		return data
