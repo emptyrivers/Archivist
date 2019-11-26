@@ -18,6 +18,8 @@ do -- boilerplate & static values
 	Archivist.prototypes = {}
 
 	Archivist.activeStores = {}
+	namespace.Archivist = Archivist
+
 	if embedder == "Archivist" then
 		-- Archivist is installed as a standalone addon.
 		-- The Archive is in the default location, ACHV_DB
@@ -38,10 +40,6 @@ do -- boilerplate & static values
 				Archivist:CloseAllStores()
 			end
 		end)
-	else
-		-- if embedder is *not* Archivist then Archivist we have no idea where the archive is located
-		-- Make Archivist available to embedder and wait for embedder to initialize.
-		namespace.Archivist = Archivist
 	end
 end
 

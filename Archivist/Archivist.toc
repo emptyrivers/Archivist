@@ -13,4 +13,4 @@
 Archivist.lua
 
 # builtin stores
-stores/simple.lua
+stores/RawData.lua
