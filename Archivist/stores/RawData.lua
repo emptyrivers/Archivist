@@ -3,7 +3,7 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this addon. If not, see https://www.gnu.org/licenses/.
 
-local _, ns = ...
+local Archivist = select(2, ...).Archivist
 
 -- super simple data store that just holds data
 
@@ -21,4 +21,4 @@ local prototype = {
 	Close = function(self, store) return store end,
 }
 
-ns.Archivist:RegisterStoreType(prototype)
+Archivist:RegisterStoreType(prototype)
