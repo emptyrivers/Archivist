@@ -400,7 +400,7 @@ do -- function Archivist:Archive(data)
 	end
 end
 
-do -- function Archivist:DeArchive(compressed)
+do -- function Archivist:DeArchive(encoded)
 	local escape2unused = {
 		["\\"] = "\001",
 		["&"] = "\002",
