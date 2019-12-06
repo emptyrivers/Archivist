@@ -348,6 +348,22 @@ function Archivist:Load(storeType, id)
 	end
 end
 
+function Archivist:Check(storeType, id)
+	do -- arg validation
+		self:Assert(type(storeType) == "string", "Expected string for storeType, got %q.", type(storeType))
+		self:Assert(type(id) == "string", "Expected string for storeID, got %q.", type(id))
+	end
+	if self.activeStores[storeType] and self.activeStores[storeType][id] then
+		-- store is open, just return it
+		return self.activeStores[storeType][id]
+	elseif self.sv[storeType] and self.sv[storeType][id] then
+		-- store exists, return true so caller knows we know about it
+		return true
+	end
+	-- store of that type and id does not exist
+	return false
+end
+
 do -- function Archivist:Archive(data)
 	local tinsert, tconcat = table.insert, table.concat
 	-- serialized string looks like
