@@ -255,9 +255,12 @@ end
 
 -- unpacks data in the archive into an active store object
 -- if store is already active, then returns active store object
-function Archivist:Open(storeType, id)
-	self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before opening a store.")
-	self:Assert(type(id) == "string" and (self.sv[storeType][id] or self.activeStores[storeType][id]), "Could not find a store with that ID. Did you mean to call Archivist:Create?")
+function Archivist:Open(storeType, id, ...)
+	do -- arg validation
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before opening a store.")
+		self:Assert(type(id) == "string" and (self.sv[storeType][id] or self.activeStores[storeType][id]), "Could not find a store with that ID. Did you mean to call Archivist:Create?")
+	end
+
 	local store = self.activeStores[storeType][id]
 	if not store then
 		local savedData = self.sv[storeType][id]
