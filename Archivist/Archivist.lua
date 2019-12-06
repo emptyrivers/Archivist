@@ -266,7 +266,7 @@ function Archivist:Open(storeType, id)
 		-- migrate data...
 		data = prototype:Update(data)
 		-- create store object...
-		store = prototype:Open(data)
+		store = prototype:Open(data, ...)
 		-- cache it so that we can close it later..
 		self.activeStores[storeType][id] = store
 	end
