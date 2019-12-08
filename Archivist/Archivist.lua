@@ -196,9 +196,8 @@ function Archivist:Create(storeType, id, ...)
 		-- save initial image via Commit
 		image = self.prototypes[storeType]:Commit(store)
 	end
-	if image ~= nil then
-		self.sv[storeType] = self:Archive(image)
-	end
+	self:Assert(image ~= nil, "Create Verb failed to generate initial image for archive.")
+	self.sv[storeType] = self:Archive(image)
 
 	return store, id
 end
@@ -353,15 +352,11 @@ function Archivist:Check(storeType, id)
 		self:Assert(type(storeType) == "string", "Expected string for storeType, got %q.", type(storeType))
 		self:Assert(type(id) == "string", "Expected string for storeID, got %q.", type(id))
 	end
-	if self.activeStores[storeType] and self.activeStores[storeType][id] then
-		-- store is open, just return it
-		return self.activeStores[storeType][id]
-	elseif self.sv[storeType] and self.sv[storeType][id] then
-		-- store exists, return true so caller knows we know about it
+	if self.sv[storeType] and self.sv[storeType][id] then
 		return true
+	else
+		return false
 	end
-	-- store of that type and id does not exist
-	return false
 end
 
 do -- function Archivist:Archive(data)

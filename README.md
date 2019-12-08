@@ -13,6 +13,7 @@ Archivist is a flexible data storage service for WoW AddOns. It is designed espe
 	- [Custom Store Types](#custom-store-types)
 		- [Store Type Methods Should be Functional](#store-type-methods-should-be-functional)
 		- [Re-registering prototypes](#re-registering-prototypes)
+	- [Performance](#performance)
 	- [Full API List](#full-api-list)
 	- [Limitations and "Gotchas"](#limitations-and-%22gotchas%22)
 		- [Archivist Modifies Your Addon's Namespace](#archivist-modifies-your-addons-namespace)
@@ -53,7 +54,7 @@ Archivist:CloseStore(myStore)
 Archivist:Close("RawData", "MyAddonArchive")
 ```
 
-Once closed, any changes to myStore will not be archived unless you reopen the store. Depending on the store type chosen, this may.
+Once closed, any changes to myStore will not be archived unless you reopen the store. 
 
 Some store types (see [Create New Store Types](#create-new-store-types) below) may operate in such a way that it makes sense to commit changes to the archive, without closing the store. Archivist supports this operation too:
 
@@ -67,12 +68,10 @@ All open stores are automatically closed and archived on `PLAYER_LOGOUT`. You sh
 
 ### Included Store Types
 
-Archivist comes prepackaged with some basic store types, both for basic uses and as an example for implementing your own. They are listed here:
+Archivist comes prepackaged with some basic store types, both for your convenience and as an example for implementing your own. They are listed here:
 
 - RawData
   - A simple table with no extra bells or whistles. The contents of this table are stored directly into the archive when this archive is committed or closed.
-- Store
-  - Similar to RawData, but with Commit, Close, Clone functions grafted on. These are aliases to the corresponding Archivist verbs, provided for convenience.
 
 ### Embedding the Archivist
 
@@ -186,7 +185,13 @@ If multiple independent codebases share an archive, and they both register the s
   - The new Init method is run.
   - Any previously open stores are opened.
 
-Re-registering a store type is generally not recommended, as you risk data loss and other errors. If you are using a store type in a shared archive which you expect to be registered multiple times (e.g. by independent custom code auras in WeakAuras), then it is recommended to only keep stores of that type open for the time that you need them to be open. Alternatively, design the Initialization routine such that it can broadcast the re-initialization, so that any store which was previously open can be re-obtained.
+Re-registering a store type is generally not recommended, as you risk data loss and other errors. If you are using a store type in a shared archive which you expect to be registered multiple times (e.g. by independent custom code auras in WeakAuras), then it is recommended to only keep stores of that type open for the time that you need them to be open. Alternatively, design the Initialization routine such that it can broadcast the re-initialization, so that any system that was holding a reference to any open store can re-obtain that reference.
+
+## Performance
+
+Archivist stores data in a compressed format, to minimize load times. This means that to open an archive, Archivist must fully decompress the data. Depending on the level of compression, and the size before compression, this can potentially take a long time to do.
+
+To circumvent this, consider breaking your data into chunks (ideally into chunks that are meaningful for your code, and not arbitrarily based on data size), and archiving each piece in its own store, if you believe that your archive will contain a large amount of data. The `Check` verb is provided as a cheap way to check if a given storeID exists in the archive.
 
 ## Full API List
 
@@ -204,7 +209,7 @@ Archivist:RegisterStoreType(prototype)
 
 
 -- Archivist verbs
--- 	These are the main "actions" that archivist does.
+-- 	These are the main "actions" that archivist knows how to do.
 
 -- Creates a new archive, and returns an active store object. Raises an error if archive already exists. In most cases you'll want to use Load instead.
 store = Archivist:Create(storeType, storeID, ...)
@@ -228,9 +233,11 @@ Archivist:CloseStore(store)
 Archivist:Close(storeType, storeID)
 -- Note: once a store is closed, manipulating the old store object is considered outside of the Archivist specification, and behavior depends on the store type implementation. However, any changes after Close will *never* be archived
 
-
--- Miscellaneous verbs
--- 	These actions are available for your use, but are generally less useful
+-- Check if a store exists.
+-- 	This verb is intended for performance-critical operations, where you only need to ensure that the store exists. Guaranteed to never call Archive/DeArchive, or invoke any prototype methods.
+-- Returns true if data for the given storeID exists in the archive, or an active store object exists.
+-- Otherwise, returns false.
+storeExists = Archivist:Check(storeType, storeID)
 
 -- Close and delete store permanently. Use ONLY if you are absolutely sure you don't want the data anymore. Archivist cannot help you retrieve lost data once you invoke this.
 -- 	If force is truthy, then the Delete will go through even if the store type is not registered. This is useful if you decide to drop support for a storeType.
