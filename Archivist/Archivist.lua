@@ -16,28 +16,27 @@ do -- boilerplate & static values
 	--@end-debug@
 
 	Archivist.prototypes = {}
-
+	Archivist.storeMap = {}
 	Archivist.activeStores = {}
 	namespace.Archivist = Archivist
-
+	local unloader = CreateFrame("FRAME")
+	unloader:RegisterEvent("PLAYER_LOGOUT")
+	unloader:SetScript("OnEvent", function()
+		Archivist:CloseAllStores()
+	end)
 	if embedder == "Archivist" then
 		-- Archivist is installed as a standalone addon.
 		-- The Archive is in the default location, ACHV_DB
 		_G.Archivist = Archivist
-		local SVframe = CreateFrame("frame")
-		SVframe:RegisterEvent("ADDON_LOADED")
-		SVframe:RegisterEvent("PLAYER_LOGOUT")
-		SVframe:SetScript("OnEvent", function(self, event, addon)
-			if event == "ADDON_LOADED" then
-				if addon == addonName then
-					if type(ACHV_DB) ~= "table" then
-						ACHV_DB = {}
-					end
-					Archivist:Initialize(ACHV_DB)
-					self:UnregisterEvent("ADDON_LOADED")
+		local loader = CreateFrame("frame")
+		loader:RegisterEvent("ADDON_LOADED")
+		loader:SetScript("OnEvent", function(self, _, addon)
+			if addon == addonName then
+				if type(ACHV_DB) ~= "table" then
+					ACHV_DB = {}
 				end
-			elseif event == "PLAYER_LOGOUT" then
-				Archivist:CloseAllStores()
+				Archivist:Initialize(ACHV_DB)
+				self:UnregisterEvent("ADDON_LOADED")
 			end
 		end)
 	end
@@ -79,7 +78,9 @@ function Archivist:Initialize(sv)
 	self.initialized = true
 	for id, prototype in pairs(self.prototypes) do
 		self.sv[id] = self.sv[id] or {}
-		prototype:Init()
+		if prototype.Init then
+			prototype:Init()
+		end
 	end
 end
 
@@ -131,7 +132,9 @@ function Archivist:RegisterStoreType(prototype)
 	self.activeStores[prototype.id] = self.activeStores[prototype.id] or {}
 	if self:IsInitialized() then
 		self.sv[prototype.id] = self.sv[prototype.id] or {}
-		prototype:Init()
+		if prototype.Init then
+			prototype:Init()
+		end
 		-- if prototype was previously registered, and Archivist is initialized, then there may be open stores of the old prototype.
 		-- Close them, Update if necessary, then re-Open them with the new prototype.
 		if oldPrototype then
@@ -186,7 +189,11 @@ function Archivist:Create(storeType, id, ...)
 	end
 
 	self.activeStores[storeType][id] = store
-	self.storeMap[store] = {id = id, prototype = self.prototypes[storeType], type = storeType}
+	self.storeMap[store] = {
+		id = id,
+		prototype = self.prototypes[storeType],
+		type = storeType
+	}
 
 	if id == nil then
 		id = self:GenerateID()
@@ -197,7 +204,7 @@ function Archivist:Create(storeType, id, ...)
 		image = self.prototypes[storeType]:Commit(store)
 	end
 	self:Assert(image ~= nil, "Create Verb failed to generate initial image for archive.")
-	self.sv[storeType] = self:Archive(image)
+	self.sv[storeType][id] = self:Archive(image)
 
 	return store, id
 end
@@ -266,11 +273,18 @@ function Archivist:Open(storeType, id, ...)
 		local data = self:DeArchive(savedData)
 		local prototype = self.prototypes[storeType]
 		-- migrate data...
-		data = prototype:Update(data)
+		if prototype.Update then
+			data = prototype:Update(data)
+		end
 		-- create store object...
 		store = prototype:Open(data, ...)
 		-- cache it so that we can close it later..
 		self.activeStores[storeType][id] = store
+		self.storeMap[store] = {
+			id = id,
+			prototype = self.prototypes[storeType],
+			type = storeType
+		}
 	end
 	return store
 end
@@ -302,7 +316,7 @@ function Archivist:CloseAllStores()
 	for storeType, prototype in pairs(self.prototypes) do
 		for id, store in pairs(self.activeStores[storeType]) do
 			local image = prototype:Close(store)
-			self.activestores[storeType] = nil
+			self.activeStores[storeType] = nil
 			if image then
 				self.sv[storeType][id] = self:Archive(image)
 			end

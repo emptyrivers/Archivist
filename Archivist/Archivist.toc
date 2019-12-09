@@ -10,6 +10,10 @@
 ## Notes: Flexible data archive.
 ## SavedVariables: ACHV_DB
 
+# externals
+libs/LibStub/LibStub.lua
+libs/LibDeflate/LibDeflate.lua
+
 Archivist.lua
 
 # builtin stores
