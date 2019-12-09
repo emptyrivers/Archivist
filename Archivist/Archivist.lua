@@ -140,21 +140,23 @@ function Archivist:RegisterStoreType(prototype)
 		if oldPrototype then
 			for storeID, store in pairs(self.activeStores[prototype.id]) do
 				local image = oldPrototype:Close(store)
+				local saved = self.sv[prototype.id][storeID]
 				local shouldReArchive = image ~= nil
 				if image == nil then
-					image = self.sv[prototype.id][storeID]
+					image = saved.data
 				end
 				if prototype.Update then
-					local newImage = prototype:Update(image)
+					local newImage = prototype:Update(image, saved.version)
 					if newImage ~= nil then
 						image = newImage
 						shouldReArchive = true
 					end
+					saved.version = prototype.version
 				end
 				self.activeStores[prototype.id][storeID] = prototype:Open(image)
 				if shouldReArchive then
 					-- a meaningful change to saved data has occurred.
-					self.sv[prototype.id][storeID] = self:Archive(image)
+					saved.data = self:Archive(image)
 				end
 			end
 		end
@@ -334,9 +336,11 @@ function Archivist:CloseAllStores()
 	for storeType, prototype in pairs(self.prototypes) do
 		for id, store in pairs(self.activeStores[storeType]) do
 			local image = prototype:Close(store)
+			local saved = self.sv[storeType][id]
 			self.activeStores[storeType] = nil
 			if image then
-				self.sv[storeType][id].data = self:Archive(image)
+				saved.data = self:Archive(image)
+				saved.timestamp = time()
 			end
 		end
 	end
