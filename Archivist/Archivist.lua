@@ -204,7 +204,11 @@ function Archivist:Create(storeType, id, ...)
 		image = self.prototypes[storeType]:Commit(store)
 	end
 	self:Assert(image ~= nil, "Create Verb failed to generate initial image for archive.")
-	self.sv[storeType][id] = self:Archive(image)
+	self.sv[storeType][id] = {
+		timestamp = time(),
+		version = self.prototypes[storeType].version,
+		data = self:Archive(image)
+	}
 
 	return store, id
 end
@@ -228,9 +232,15 @@ function Archivist:Clone(storeType, id, newId, openStore)
 	end
 
 	-- thankfully, strings are easy to copy
-	self.sv[storeType][newId] = self.sv[storeType][id]
+	self.sv[storeType][newId] = {
+		version = self.prototypes[storeType].version,
+		timestamp = time(),
+		data = self.sv[storeType][id].data
+	}
 	if openStore then
-		return self:Open(storeType, newId)
+		return self:Open(storeType, newId), newId
+	else
+		return nil, newId
 	end
 end
 
@@ -269,12 +279,17 @@ function Archivist:Open(storeType, id, ...)
 
 	local store = self.activeStores[storeType][id]
 	if not store then
-		local savedData = self.sv[storeType][id]
-		local data = self:DeArchive(savedData)
+		local saved = self.sv[storeType][id]
+		local data = self:DeArchive(saved.data)
 		local prototype = self.prototypes[storeType]
 		-- migrate data...
-		if prototype.Update then
-			data = prototype:Update(data)
+		if prototype.Update and prototype.version > saved.version then
+			local newData = prototype:Update(data)
+			if newData ~= nil then
+				saved.data = self:Archive(newData)
+				saved.timestamp = time()
+			end
+			saved.version = prototype.version
 		end
 		-- create store object...
 		store = prototype:Open(data, ...)
@@ -297,12 +312,15 @@ function Archivist:Close(storeType, id)
 	end
 
 	local store = self.activeStores[storeType][id]
+	local saved = self.sv[storeType][id]
 	if store then
 		local image = self.prototypes[storeType]:Close(store)
 		if image ~= nil then
-			self.sv[storeType][id] = self:Archive(image)
+			saved.data = self:Archive(image)
+			saved.timestamp = time()
 		end
 		self.activeStores[storeType][id] = nil
+		self.storeMap[store] = nil
 	end
 end
 
@@ -318,7 +336,7 @@ function Archivist:CloseAllStores()
 			local image = prototype:Close(store)
 			self.activeStores[storeType] = nil
 			if image then
-				self.sv[storeType][id] = self:Archive(image)
+				self.sv[storeType][id].data = self:Archive(image)
 			end
 		end
 	end
@@ -333,8 +351,10 @@ function Archivist:Commit(storeType, id)
 
 	local store = self.activeStores[storeType][id]
 	local image = self.prototypes[storeType][id]:Commit(store)
+	local saved = self.sv[storeType][id]
 	if image ~= nil then
-		self.sv[storeType][id] = self:Archive(image)
+		saved.data = self:Archive(image)
+		saved.timestamp = time()
 	end
 end
 

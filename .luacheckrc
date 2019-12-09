@@ -11,6 +11,7 @@ globals = {
 	"LibStub",
 	"strsplit",
 	"tInvert",
+	"time",
 }
 
 ignore = {
