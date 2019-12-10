@@ -15,9 +15,9 @@ jobs:
 
     - name: Ensure no warnings
       run:
-        sudo apt-get install luarocks
-        luarocks install --local luacheck
-        /home/runner/.luarocks/bin/luacheck . --no-color -q
+         sudo apt-get install luarocks
+         luarocks install --local luacheck
+         /home/runner/.luarocks/bin/luacheck . --no-color -q
 
     - name: Update Build Date
       run: sed -i "s/@build-time@/`date +%Y%m%d%H%M%S`/" Archivist/Archivist.lua
