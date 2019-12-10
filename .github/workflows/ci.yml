@@ -20,10 +20,10 @@ jobs:
         /home/runner/.luarocks/bin/luacheck . --no-color -q
 
     - name: Update Build Date
-      run: sed -i "s/@build-time@/`date +%Y%m%d%H%M%S`/" Archivist/Archivist.lua
+      run: sed -i "s/@build-time@/`date +%Y%m%d%H%M%S`/" Archivist.lua
 
     - name: Set Version Tag
-      run: sed -i "s/@project-version@/`CI build`/" Archivist/Archivist.lua
+      run: sed -i "s/@project-version@/`CI build`/" Archivist.lua
 
     - name: Create Package
       run: curl -s https://raw.githubusercontent.com/BigWigsMods/packager/master/release.sh -z | bash
@@ -35,7 +35,7 @@ jobs:
     - uses: actions/upload-artifact@v1.0.0
       with:
         name: Archivist-CI
-        path: .
+        path: ./release
 
     - name: Notify on Failure
       if: failure()
