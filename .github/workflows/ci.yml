@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-      
+
     - name: Ensure no warnings
       run:
         sudo apt-get install luarocks
@@ -21,10 +21,10 @@ jobs:
 
     - name: Update Build Date
       run: sed -i "s/@build-time@/`date +%Y%m%d%H%M%S`/" Archivist/Archivist.lua
-      
+
     - name: Set Version Tag
       run: sed -i "s/@project-version@/`CI build`/" Archivist/Archivist.lua
-      
+
     - name: Create Retail Package
       run: curl -s https://raw.githubusercontent.com/BigWigsMods/packager/master/release.sh | bash
       env:
