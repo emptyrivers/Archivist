@@ -35,7 +35,7 @@ jobs:
     - uses: actions/upload-artifact@v1.0.0
       with:
         name: Archivist-CI
-        path: .release/
+        path: .
 
     - name: Notify on Failure
       if: failure()
