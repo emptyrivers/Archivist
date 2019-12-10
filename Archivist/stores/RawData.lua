@@ -1,7 +1,11 @@
--- Copyright 2019 Allen Faure
--- This addon is distributed under the GNU General Public license version 3.0
--- You should have received a copy of the GNU General Public License
--- along with this addon. If not, see https://www.gnu.org/licenses/.
+--[[
+Written in 2019 by Allen Faure (emptyrivers) afaure6@gmail.com
+
+To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide.
+This software is distributed without any warranty.
+You should have received a copy of the CC0 Public Domain Dedication along with this software.
+If not, see http://creativecommons.org/publicdomain/zero/1.0/.
+]]
 
 local Archivist = select(2, ...).Archivist
 

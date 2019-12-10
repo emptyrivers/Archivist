@@ -1,7 +1,12 @@
--- Copyright 2019 Allen Faure
--- This addon is distributed under the GNU General Public license version 3.0
--- You should have received a copy of the GNU General Public License
--- along with this addon.  If not, see https://www.gnu.org/licenses/.
+--[[
+Archivist - Data management service for WoW Addons
+Written in 2019 by Allen Faure (emptyrivers) afaure6@gmail.com
+
+To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide.
+This software is distributed without any warranty.
+You should have received a copy of the CC0 Public Domain Dedication along with this software.
+If not, see http://creativecommons.org/publicdomain/zero/1.0/.
+]]
 
 local embedder, namespace = ...
 local addonName, Archivist = "Archivist", {}
@@ -171,7 +176,7 @@ do -- function Archive:GenerateID()
 
 	function Archivist:GenerateID()
 		local template ='xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-		return template:gsub('x', randomHex)
+		return (template:gsub('x', randomHex))
 	end
 end
 
@@ -181,7 +186,7 @@ end
 function Archivist:Create(storeType, id, ...)
 	do -- arg validation
 		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before loading data.")
-		self:Assert(id == nil or type(id) == "string" and not self.sv[storeType][id], "A storeType already exists with that id. Did you mean to call Archivist:Open?")
+		self:Assert(id == nil or type(id) == "string" and not self.sv[storeType][id], "A store already exists with that id. Did you mean to call Archivist:Open?")
 	end
 
 	local store, image = self.prototypes[storeType]:Create(...)
@@ -190,16 +195,16 @@ function Archivist:Create(storeType, id, ...)
 		self:Assert(self.storeMap[store] == nil, "Store Type %q produced an store object already registered with Archivist instead of creating a new one.", storeType)
 	end
 
+	if id == nil then
+		id = self:GenerateID()
+	end
+
 	self.activeStores[storeType][id] = store
 	self.storeMap[store] = {
 		id = id,
 		prototype = self.prototypes[storeType],
 		type = storeType
 	}
-
-	if id == nil then
-		id = self:GenerateID()
-	end
 
 	if image == nil then
 		-- save initial image via Commit
@@ -306,6 +311,25 @@ function Archivist:Open(storeType, id, ...)
 	return store
 end
 
+-- DANGEROUS FUNCTION
+-- Your data will be lost. All of it. No going back.
+-- Don't say I didn't warn you
+function Archivist:DeleteAll(storeType)
+	if storeType then
+		self.sv[storeType] = nil
+		for id, store in pairs(self.activeStores[storeType]) do
+			self.activeStores[storeType][id] = nil
+			self.storeMap[store] = nil
+		end
+	else
+		for id in pairs(self.prototypes) do
+			self.sv[id] = {}
+			self.activeStores[id] = {}
+		end
+	end
+	self.storeMap = {}
+end
+
 -- deactivates store, with one last opportunity to commit data if the prototype chooses to do so
 function Archivist:Close(storeType, id)
 	do -- arg validation
@@ -409,7 +433,7 @@ do -- function Archivist:Archive(data)
 	-- &N is a reference to <objN>
 	-- when deserializing, the result of <value> is our result
 	local function replace(c) return "\\"..c end
-	local function serialize(value)
+	local function serialize(object)
 		local seenObjects = {}
 		local serializedObjects = {}
 		local function inner(val)
@@ -429,15 +453,18 @@ do -- function Archivist:Archive(data)
 					local serialized = {}
 					serializedObjects[index] = "" -- so that later inserts go to the correct spot
 					for k,v in pairs(val) do
-					tinsert(serialized, "^" .. inner(k))
-					tinsert(serialized, ":" .. inner(v))
+						local key, value = inner(k), inner(v)
+						if key ~= nil and value ~= nil then
+							tinsert(serialized, "^" .. inner(k))
+							tinsert(serialized, ":" .. inner(v))
+						end
 					end
 					serializedObjects[index] = tconcat(serialized)
 				end
 				return "&" .. seenObjects[val]
 			end
 		end
-		tinsert(serializedObjects, inner(value))
+		tinsert(serializedObjects, inner(object))
 		return tconcat(serializedObjects, ',')
 	end
 
@@ -496,7 +523,10 @@ do -- function Archivist:DeArchive(encoded)
 		-- first, convert escaped magic characters to chars that we'll likely never find naturally
 		value = value:gsub("\\([\\&,^@$#:])", unusify)
 		-- then, split by comma to get a list of objects
-		local serializedObjects = {strsplit(",", value)}
+		local serializedObjects = {}
+		for piece in value:gmatch("([^,]*),?") do
+			table.insert(serializedObjects, piece)
+		end
 		local objects = {}
 		-- create one empty object for each object in the list
 		for i = 1, #serializedObjects - 1 do
