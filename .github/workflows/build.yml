@@ -30,6 +30,11 @@ jobs:
         GITHUB_OAUTH: ${{ secrets.GITHUB_OAUTH }}
         WOWI_API_TOKEN: ${{ secrets.WOWI_API_TOKEN }}
 
+    - uses: actions/upload-artifact@master
+      with:
+        name: WeakAuras-PR
+        path: .release/
+
     - name: Notify on Failure
       if: failure()
       env:
