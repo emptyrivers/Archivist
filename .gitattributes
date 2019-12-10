@@ -1,3 +1,4 @@
 * text=auto
 
-.github/workflows/* -text
+**.yml -text
+.pkgmeta -text
