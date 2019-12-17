@@ -465,6 +465,8 @@ do -- function Archivist:Archive(data)
 			end
 		end
 		tinsert(serializedObjects, inner(object))
+		-- ensure that serialized data ends with a comma
+		tinsert(serializedObjects, "")
 		return tconcat(serializedObjects, ',')
 	end
 
@@ -524,7 +526,7 @@ do -- function Archivist:DeArchive(encoded)
 		value = value:gsub("\\([\\&,^@$#:])", unusify)
 		-- then, split by comma to get a list of objects
 		local serializedObjects = {}
-		for piece in value:gmatch("([^,]*),?") do
+		for piece in value:gmatch("([^,]*),") do
 			table.insert(serializedObjects, piece)
 		end
 		local objects = {}
@@ -532,8 +534,10 @@ do -- function Archivist:DeArchive(encoded)
 		for i = 1, #serializedObjects - 1 do
 			objects[i] = {}
 		end
-		for index, object in pairs(objects) do
+		for index = 1, #serializedObjects - 1 do
 			local str = serializedObjects[index]
+			local object = objects[index]
+			--print('deserializing object ',index, ' : ', str)
 			local mode = "KEY"
 			local key
 			local newValue, valueType
