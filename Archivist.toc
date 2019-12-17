@@ -9,6 +9,7 @@
 ## Version: @project-version@
 ## Notes: Flexible data archive.
 ## SavedVariables: ACHV_DB
+## X-Curse-Project-ID: 354259
 
 # externals
 libs/LibStub/LibStub.lua
