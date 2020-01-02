@@ -27,7 +27,7 @@ do -- boilerplate & static values
 	local unloader = CreateFrame("FRAME")
 	unloader:RegisterEvent("PLAYER_LOGOUT")
 	unloader:SetScript("OnEvent", function()
-		Archivist:CloseAllStores()
+		Archivist:DeInitialize()
 	end)
 	if embedder == "Archivist" then
 		-- Archivist is installed as a standalone addon.
@@ -86,6 +86,15 @@ function Archivist:Initialize(sv)
 		if prototype.Init then
 			prototype:Init()
 		end
+	end
+end
+
+-- Shut Archivist down
+function Archivist:DeInitialize()
+	if self:IsInitialized() then
+		self.initialized = false
+		self:CloseAllStores()
+		self.sv = nil
 	end
 end
 
@@ -374,11 +383,11 @@ end
 function Archivist:Commit(storeType, id)
 	do -- arg validation
 		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Committing a store of an unregistered store type doesn't make sense.")
-		self:Assert(type(id) == string and self.activeStores[storeType][id], "No store with that ID can be found.")
+		self:Assert(type(id) == "string" and self.activeStores[storeType][id], "No store with that ID can be found.")
 	end
 
 	local store = self.activeStores[storeType][id]
-	local image = self.prototypes[storeType][id]:Commit(store)
+	local image = self.prototypes[storeType]:Commit(store)
 	local saved = self.sv[storeType][id]
 	if image ~= nil then
 		saved.data = self:Archive(image)

@@ -19,3 +19,4 @@ Archivist.lua
 
 # builtin stores
 stores/RawData.lua
+stores/ReadOnly.lua
