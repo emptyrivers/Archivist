@@ -279,10 +279,10 @@ function Archivist:Delete(storeType, id, force)
 	end
 end
 
-function Archivist:DeleteStore(store, force)
+function Archivist:DeleteStore(store)
 	self:Assert(self.storeMap[store], "Unrecognized store was provided.")
 	local info = self.storeMap[store]
-	return self:Delete(info.type, info.id, force)
+	return self:Delete(info.type, info.id)
 end
 
 -- unpacks data in the archive into an active store object
@@ -300,7 +300,7 @@ function Archivist:Open(storeType, id, ...)
 		local prototype = self.prototypes[storeType]
 		-- migrate data...
 		if prototype.Update and prototype.version > saved.version then
-			local newData = prototype:Update(data)
+			local newData = prototype:Update(data, saved.version)
 			if newData ~= nil then
 				saved.data = self:Archive(newData)
 				saved.timestamp = time()
