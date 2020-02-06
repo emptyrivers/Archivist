@@ -517,10 +517,12 @@ do -- function Archivist:DeArchive(encoded)
 			local num, rest = remainder:match("([^\\&,^@$#:]*)(.*)")
 			return tonumber(num), "NUMBER", rest
 		elseif firstChar == "^" then
-			local key, _, rest = parse(remainder, objectList)
+			local str, rest = remainder:match("([^:^,]*)(.*)")
+			local key = parse(str, objectList)
 			return key, "KEY", rest
 		elseif firstChar == ":" then
-			local val, _, rest = parse(remainder, objectList)
+			local str, rest = remainder:match("([^:^,]*)(.*)")
+			local val = parse(str, objectList)
 			return val, "VALUE", rest
 		elseif firstChar == "&" then
 			local num, rest = remainder:match("([^\\&,^@$#:]*)(.*)")
@@ -546,7 +548,6 @@ do -- function Archivist:DeArchive(encoded)
 		for index = 1, #serializedObjects - 1 do
 			local str = serializedObjects[index]
 			local object = objects[index]
-			--print('deserializing object ',index, ' : ', str)
 			local mode = "KEY"
 			local key
 			local newValue, valueType
@@ -571,7 +572,9 @@ do -- function Archivist:DeArchive(encoded)
 	function Archivist:DeArchive(encoded)
 		local compressed = LibDeflate:DecodeForPrint(encoded)
 		local serialized = LibDeflate:DecompressDeflate(compressed)
+		ACHV_DB.serial = serialized
 		local data = deserialize(serialized)
 		return data
 	end
 end
+-- /run WeakAuras.LoadFromArchive("Repository", "history")
