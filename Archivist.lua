@@ -576,4 +576,3 @@ do -- function Archivist:DeArchive(encoded)
 		return data
 	end
 end
--- /run WeakAuras.LoadFromArchive("Repository", "history")
