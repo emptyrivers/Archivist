@@ -572,7 +572,6 @@ do -- function Archivist:DeArchive(encoded)
 	function Archivist:DeArchive(encoded)
 		local compressed = LibDeflate:DecodeForPrint(encoded)
 		local serialized = LibDeflate:DecompressDeflate(compressed)
-		ACHV_DB.serial = serialized
 		local data = deserialize(serialized)
 		return data
 	end
