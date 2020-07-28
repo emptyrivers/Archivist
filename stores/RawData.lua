@@ -25,4 +25,4 @@ local prototype = {
 	Close = function(self, store) return store end,
 }
 
-Archivist:RegisterStoreType(prototype)
+Archivist:RegisterDefaultStoreType(prototype)
