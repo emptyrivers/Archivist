@@ -1,4 +1,9 @@
 package-as: Archivist
 
+externals:
+  Archivist/libs/LibSerialize:
+    url: https://github.com/rossnichols/LibSerialize
+    tag: v1.0.0
+
 ignore:
 	- README.md

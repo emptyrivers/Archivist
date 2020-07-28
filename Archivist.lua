@@ -12,6 +12,7 @@ local embedder, namespace = ...
 local addonName, Archivist = "Archivist", {}
 -- Our only library!
 local LibDeflate = LibStub("LibDeflate")
+local LibSerialize = LibStub("LibSerialize")
 
 do -- boilerplate & static values
 	Archivist.buildDate = "@build-time@"
@@ -428,161 +429,32 @@ function Archivist:Load(storeType, id)
 	end
 end
 
+-- inspect archive to see if the requested store exists
+-- guaranteed never to perform any prototype methods, or to (de)archive any data
+-- useful when performance is important
 function Archivist:Check(storeType, id)
 	do -- arg validation
 		self:Assert(type(storeType) == "string", "Expected string for storeType, got %q.", type(storeType))
 		self:Assert(type(id) == "string", "Expected string for storeID, got %q.", type(id))
 	end
-	if self.sv[storeType] and self.sv[storeType][id] then
-		return true
-	else
-		return false
-	end
+	return self.sv[storeType] and self.sv[storeType][id]
 end
 
-do -- function Archivist:Archive(data)
-	local tinsert, tconcat = table.insert, table.concat
-	-- serialized string looks like
-	-- <obj1>,<obj2>,...,<objN>,<value>
-	-- (in most cases <value> will be just &1)
-	-- <objN> is a series of 0 or more ^<value>:<value> pairs
-	-- the contents of the string between ^ or : and the next magic character is a string,
-	-- unless the first char is the magic #, in which case it is a number.
-	-- @ becomes boolean true, $ becomes false
-	-- &N is a reference to <objN>
-	-- when deserializing, the result of <value> is our result
-	local function replace(c) return "\\"..c end
-	local function serialize(object)
-		local seenObjects = {}
-		local serializedObjects = {}
-		local function inner(val)
-			local valType = type(val)
-			if valType == "boolean" then
-				return val and "@" or "$"
-			elseif valType == "number" then
-				return "#" .. val
-			elseif valType == "string" then
-				-- escape all characters that might be confused as magic otherwise
-				return (val:gsub("[\\&,^@$#:]", replace))
-			elseif valType == "table" then
-				if not seenObjects[val] then
-					-- cross referencing is a thing. Not to hard to serialize but do be careful
-					local index = #serializedObjects + 1
-					seenObjects[val] = index
-					local serialized = {}
-					serializedObjects[index] = "" -- so that later inserts go to the correct spot
-					for k,v in pairs(val) do
-						local key, value = inner(k), inner(v)
-						if key ~= nil and value ~= nil then
-							tinsert(serialized, "^" .. inner(k))
-							tinsert(serialized, ":" .. inner(v))
-						end
-					end
-					serializedObjects[index] = tconcat(serialized)
-				end
-				return "&" .. seenObjects[val]
-			end
-		end
-		tinsert(serializedObjects, inner(object))
-		-- ensure that serialized data ends with a comma
-		tinsert(serializedObjects, "")
-		return tconcat(serializedObjects, ',')
-	end
+local serializeConfig = {
+	errorOnUnserializableType = false
+}
 
-	function Archivist:Archive(data)
-		local serialized = serialize(data)
-		local compressed = LibDeflate:CompressDeflate(serialized)
-		local encoded = LibDeflate:EncodeForPrint(compressed)
-		return encoded
-	end
+function Archivist:Archive(data)
+	local serialized = LibSerialize:SerializeEx(serializeConfig, data)
+	local compressed = LibDeflate:CompressDeflate(serialized)
+	local encoded = LibDeflate:EncodeForPrint(compressed)
+	return encoded
 end
 
-do -- function Archivist:DeArchive(encoded)
-	local escape2unused = {
-		["\\"] = "\001",
-		["&"] = "\002",
-		[","] = "\003",
-		["^"] = "\004",
-		["@"] = "\005",
-		["$"] = "\006",
-		["#"] = "\007",
-		[":"] = "\008",
-	}
-	local unused2Escape = tInvert(escape2unused)
-	local unused = "[\001-\008]"
-	local function unusify(c)
-		return escape2unused[c] or c
-	end
-	local function escapify(c)
-		return unused2Escape[c] or c
-	end
-	local function parse(value, objectList)
-		local firstChar = value:sub(1,1)
-		local remainder = value:sub(2)
-		if firstChar == "@" then
-			return true, "BOOL", remainder
-		elseif firstChar == "$" then
-			return false, "BOOL", remainder
-		elseif firstChar == "#" then
-			local num, rest = remainder:match("([^\\&,^@$#:]*)(.*)")
-			return tonumber(num), "NUMBER", rest
-		elseif firstChar == "^" then
-			local str, rest = remainder:match("([^:^,]*)(.*)")
-			local key = parse(str, objectList)
-			return key, "KEY", rest
-		elseif firstChar == ":" then
-			local str, rest = remainder:match("([^:^,]*)(.*)")
-			local val = parse(str, objectList)
-			return val, "VALUE", rest
-		elseif firstChar == "&" then
-			local num, rest = remainder:match("([^\\&,^@$#:]*)(.*)")
-			return objectList[tonumber(num)], "OBJECT", rest
-		else
-			local str, rest = value:match("([^\\&,^@$#:]*)(.*)")
-			return str:gsub(unused, escapify), "STRING", rest
-		end
-	end
-	local function deserialize(value)
-		-- first, convert escaped magic characters to chars that we'll likely never find naturally
-		value = value:gsub("\\([\\&,^@$#:])", unusify)
-		-- then, split by comma to get a list of objects
-		local serializedObjects = {}
-		for piece in value:gmatch("([^,]*),") do
-			table.insert(serializedObjects, piece)
-		end
-		local objects = {}
-		-- create one empty object for each object in the list
-		for i = 1, #serializedObjects - 1 do
-			objects[i] = {}
-		end
-		for index = 1, #serializedObjects - 1 do
-			local str = serializedObjects[index]
-			local object = objects[index]
-			local mode = "KEY"
-			local key
-			local newValue, valueType
-			while #str > 0 do
-				newValue, valueType, str = parse(str, objects)
-				Archivist:Assert(valueType == mode, "Encountered unexpected token type while parsing object. Expected %q but got %q.", mode, valueType)
-				if valueType == "KEY" then
-					key = newValue
-					mode = "VALUE"
-				else
-					mode = "KEY"
-					object[key] = newValue
-				end
-			end
-			Archivist:Assert(mode == "KEY", "Encountered end of serialized token unexpectedly.")
-		end
-		local deserialized, _, remainder = parse(serializedObjects[#serializedObjects], objects)
-		Archivist:Assert(#remainder == 0, "Unexpected token at end of serialized string. Expected EOF, got %q.", remainder:sub(1,10))
-		return deserialized
-	end
-
-	function Archivist:DeArchive(encoded)
-		local compressed = LibDeflate:DecodeForPrint(encoded)
-		local serialized = LibDeflate:DecompressDeflate(compressed)
-		local data = deserialize(serialized)
-		return data
-	end
+function Archivist:DeArchive(encoded)
+	local compressed = LibDeflate:DecodeForPrint(encoded)
+	local serialized = LibDeflate:DecompressDeflate(compressed)
+	local data = LibSerialize:Deserialize(serialized)
+	return data
 end
+

@@ -1,1 +1,5 @@
 .release
+
+libs/
+!libs/LibDeflate
+!libs/LibStub
