@@ -116,7 +116,7 @@ function Archivist:Initialize(sv, prototypes)
 	}, {
 		__index = proto
 	})
-	if type(sv.archivistVersion) ~= "number" or sv.archivistVersion < self.internalVersion then
+	if type(sv.internalVersion) ~= "number" or sv.internalVersion < self.internalVersion then
 		self:DoMigration(archive)
 	end
 	self.archives[sv] = archive
@@ -142,12 +142,12 @@ function Archivist:RegisterMigration(version, migration)
 end
 
 function Archivist:DoMigration(archive)
-	for i = archive.sv.archivistVersion or 1, self.internalVersion do
+	for i = archive.sv.internalVersion or 1, self.internalVersion do
 		if self.migrations[i] then
 			self.migrations[i](archive)
 		end
 	end
-	archive.sv.archivistVersion = self.internalVersion
+	archive.sv.internalVersion = self.internalVersion
 end
 
 -- also make Initialize available via __call

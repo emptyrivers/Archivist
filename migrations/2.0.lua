@@ -86,16 +86,20 @@ local LibDeflate = LibStub("LibDeflate")
 Archivist:RegisterMigration(2, function(archive)
 	-- move data one level down,
 	-- so that we can add more data to the sv
-	archive.sv = {
-		stores = archive.sv
-	}
+	local data = {}
+	for k, v in pairs(archive.sv) do
+		data[k] = v
+		archive.sv[k] = nil
+	end
+	archive.sv.stores = data
 	-- and also re-encode data with LibSerialize
 	for _, storeType in pairs(archive.sv.stores) do
 		for _, saved in pairs(storeType) do
 			local compressed = LibDeflate:DecodeForPrint(saved.data)
 			local serialized = LibDeflate:DecompressDeflate(compressed)
-			local data = deserialize(serialized)
-			saved.data = Archivist:Archive(data)
+			local image = deserialize(serialized)
+			saved.data = Archivist:Archive(image)
+			saved.timestamp = time()
 		end
 	end
 end)
