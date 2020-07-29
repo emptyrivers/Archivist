@@ -14,15 +14,16 @@ local addonName, Archivist = "Archivist", {}
 do -- boilerplate, static values, automatic unloader
 	Archivist.buildDate = "@build-time@"
 	Archivist.version = "@project-version@"
-	Archivist.migrationVersion = 2
+	Archivist.internalVersion = 2
 	Archivist.archives = {}
+	Archivist.migrations = {}
 	Archivist.defaultStoreTypes = {}
 	namespace.Archivist = Archivist
 	local unloader = CreateFrame("FRAME")
 	unloader:RegisterEvent("PLAYER_LOGOUT")
 	unloader:SetScript("OnEvent", function()
 		for _, archive in pairs(Archivist.archives) do
-			archive:DeInitialize()
+			Archivist:DeInitialize(archive)
 		end
 	end)
 	if embedder == "Archivist" then
@@ -103,6 +104,9 @@ function Archivist:Initialize(sv, prototypes)
 	if self:IsInitialized(sv) then
 		return self.archives[sv]
 	end
+	if type(sv.stores) ~= "table" then
+		sv.stores = {}
+	end
 	local archive = setmetatable({
 		prototypes = {},
 		activeStores = {},
@@ -112,11 +116,13 @@ function Archivist:Initialize(sv, prototypes)
 	}, {
 		__index = proto
 	})
-	if type(sv.archivistVersion) ~= "number" or sv.archivistVersion < self.migrationVersion then
+	if type(sv.archivistVersion) ~= "number" or sv.archivistVersion < self.internalVersion then
 		self:DoMigration(archive)
 	end
 	self.archives[sv] = archive
-	self:RegisterDefaultStoreTypes(archive)
+	for _, prototype in pairs(self.defaultStoreTypes) do
+		archive:RegisterStoreType(prototype)
+	end
 	if prototypes then
 		for _, prototype in pairs(prototypes) do
 			archive:RegisterStoreType(prototype)
@@ -128,7 +134,7 @@ end
 -- register a migration to upgrade archivist version
 function Archivist:RegisterMigration(version, migration)
 	do -- arg validation
-		self:Assert(type(version) == "number" and version <= self.migrationVersion and version % 1 == 0 and self.migrations[version] == nil,
+		self:Assert(type(version) == "number" and version <= self.internalVersion and version % 1 == 0 and self.migrations[version] == nil,
 			"Migration version should be valid integer")
 		self:Assert(type(migration) == "function", "Migration should be a function")
 	end
@@ -136,10 +142,12 @@ function Archivist:RegisterMigration(version, migration)
 end
 
 function Archivist:DoMigration(archive)
-	for i = archive.sv.archivistVersion or 1, self.migrationVersion do
-		self.migrations[i](archive)
+	for i = archive.sv.archivistVersion or 1, self.internalVersion do
+		if self.migrations[i] then
+			self.migrations[i](archive)
+		end
 	end
-	archive.sv.archivistVersion = self.migrationVersion
+	archive.sv.archivistVersion = self.internalVersion
 end
 
 -- also make Initialize available via __call
@@ -148,11 +156,12 @@ setmetatable(Archivist, {
 })
 
 -- Shut Archivist instance down
-function Archivist:DeInitialize()
-	if self:IsInitialized() then
-		self.initialized = false
-		self:CloseAllStores()
-		self.sv = nil
+function Archivist:DeInitialize(archive)
+	if self.archives[archive.sv] == archive then
+		archive.initialized = false
+		archive:CloseAllStores()
+		self.archives[archive.sv] = nil
+		archive.sv = nil
 	end
 end
 

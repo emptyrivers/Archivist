@@ -14,7 +14,7 @@
 # externals
 libs/LibStub/LibStub.lua
 libs/LibDeflate/LibDeflate.lua
-libs/LibSerialize/lib.xml
+libs/LibSerialize/LibSerialize.lua
 
 Archivist.lua
 
