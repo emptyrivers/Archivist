@@ -26,7 +26,7 @@ do -- boilerplate, static values, automatic unloader
 			Archivist:DeInitialize(archive)
 		end
 	end)
-	if embedder == "Archivist" then
+	if embedder == addonName then
 		-- Archivist is installed as a standalone addon.
 		-- The Archive is in the default location, ACHV_DB
 		local loader = CreateFrame("frame")
@@ -71,6 +71,8 @@ local serializeConfig = {
 
 -- prototype used to create archives
 local proto = {}
+Archivist.proto = proto
+
 --@debug@
 proto.debug = true
 --@end-debug@
@@ -184,19 +186,6 @@ local function checkPrototype(prototype)
 	-- prototype is now guaranteed to have Init, Create, Open, Update functions, and is thus well-formed.
 end
 
--- register a (default) store type with Archivist
--- prototype fields:
---  id - unique identifier. Preferably also a descriptive name, like "simple" or "snapshot".
---  version - positive integer. Used for version control, in case any data migrations are needed. Registration will fail if the prototype is outdated.
---  Init - function (optional). If provided, executes exactly once per session, before any other methods are called.
---  Create - function (required). Create a brand new active store object.
---  Update - function (optional). Massage archived data into a format that Open can accept. Useful for data migrations.
---  Open - function (requried). Create from the provided data an active store object. Prototype may assume ownership of the provided data however it wishes.
---  Commit - function (required). Return an image of the data that should be archived.
---  Close - function (required). Release ownership of active store object. Optionally, return image of data to write into archive.
---  Delete - function (optional). If provided, called when a store is deleted. Useful for cleaning up sub stores.
--- Please note that Create, Open, Update (if provided), Commit, Close, Delete may be called at any time if Archivist deems it necessary.
--- Thus, these methods should ideally be as close to purely functional as is practical, to minimize friction.
 function Archivist:RegisterDefaultStoreType(prototype)
 	checkPrototype(prototype)
 
@@ -211,6 +200,19 @@ function Archivist:RegisterDefaultStoreType(prototype)
 	end
 end
 
+-- register a (default) store type with Archivist
+-- prototype fields:
+--  id - unique identifier. Preferably also a descriptive name, like "simple" or "snapshot".
+--  version - positive integer. Used for version control, in case any data migrations are needed. Registration will fail if the prototype is outdated.
+--  Init - function (optional). If provided, executes exactly once per session, before any other methods are called.
+--  Create - function (required). Create a brand new active store object.
+--  Update - function (optional). Massage archived data into a format that Open can accept. Useful for data migrations.
+--  Open - function (requried). Create from the provided data an active store object. Prototype may assume ownership of the provided data however it wishes.
+--  Commit - function (required). Return an image of the data that should be archived.
+--  Close - function (required). Release ownership of active store object. Optionally, return image of data to write into archive.
+--  Delete - function (optional). If provided, called when a store is deleted. Useful for cleaning up sub stores.
+-- Please note that Create, Open, Update (if provided), Commit, Close, Delete may be called at any time if Archivist deems it necessary.
+-- Thus, these methods should ideally be as close to purely functional as is practical, to minimize friction.
 function proto:RegisterStoreType(prototype)
 	checkPrototype(prototype)
 
