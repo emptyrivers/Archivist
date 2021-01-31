@@ -335,7 +335,7 @@ end
 -- Don't say I didn't warn you
 function Archivist:DeleteAll(storeType)
 	if storeType then
-		self.sv[storeType] = nil
+		self.sv[storeType] = {}
 		for id, store in pairs(self.activeStores[storeType]) do
 			self.activeStores[storeType][id] = nil
 			self.storeMap[store] = nil
