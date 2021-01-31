@@ -345,8 +345,8 @@ function Archivist:DeleteAll(storeType)
 			self.sv[id] = {}
 			self.activeStores[id] = {}
 		end
+		self.storeMap = {}
 	end
-	self.storeMap = {}
 end
 
 -- deactivates store, with one last opportunity to commit data if the prototype chooses to do so
