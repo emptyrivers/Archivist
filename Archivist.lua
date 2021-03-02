@@ -143,7 +143,8 @@ function Archivist:RegisterStoreType(prototype)
 		Update = prototype.Update,
 		Open = prototype.Open,
 		Commit = prototype.Commit,
-		Close = prototype.Close
+		Close = prototype.Close,
+		Delete = prototype.Delete
 	}
 	self.activeStores[prototype.id] = self.activeStores[prototype.id] or {}
 	if self:IsInitialized() then
@@ -279,10 +280,10 @@ function Archivist:Delete(storeType, id, force)
 	end
 
 	if id and storeType and self.sv[storeType] then
-		if self.prototypes[id] and self.prototypes[id].Delete then
+		if self.prototypes[storeType] and self.prototypes[storeType].Delete and self.sv[storeType][id] then
 			local image = self.activeStores[storeType][id]
 						 and self:Close(self.activeStores[storeType][id])
-						 or self:Dearchive(self.sv[storeType][id])
+						 or self:DeArchive(self.sv[storeType][id].data)
 			self.prototypes[storeType]:Delete(image)
 		end
 		self.sv[storeType][id] = nil
