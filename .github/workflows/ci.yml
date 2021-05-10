@@ -9,35 +9,34 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+      - uses: actions/checkout@v1
 
-    - name: Ensure no warnings
-      run: |
-        sudo apt-get install luarocks
-        luarocks install --local luacheck
-        /home/runner/.luarocks/bin/luacheck . --no-color -q
+      - name: Install and run Luacheck
+        uses: nebularg/actions-luacheck@v1
+        with:
+          args: "--no-color -q"
+          annotate: warning
 
-    - name: Update Build Date
-      run: sed -i "s/@build-time@/`date +%Y%m%d%H%M%S`/" Archivist.lua
+      - name: Update Build Date
+        run: sed -i "s/@build-time@/`date +%Y%m%d%H%M%S`/" Archivist.lua
 
-    - name: Create Package
-      run: curl -s https://raw.githubusercontent.com/BigWigsMods/packager/master/release.sh | bash
-      env:
-        CF_API_KEY: ${{ secrets.CF_API_KEY }}
-        GITHUB_OAUTH: ${{ secrets.GITHUB_OAUTH }}
+      - name: Create Package
+        uses: BigWigsMods/packager@master
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_OAUTH }}
 
-    - uses: actions/upload-artifact@v1.0.0
-      with:
-        name: Archivist-CI
-        path: .release/Archivist
+      - uses: actions/upload-artifact@v1.0.0
+        with:
+          name: Archivist-CI
+          path: .release/Archivist
 
-    - name: Notify on Failure
-      if: failure()
-      env:
-        BUILD_STATUS: ${{ job.status }}
-        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-      run: curl -s https://raw.githubusercontent.com/nebularg/actions-discord-webhook/master/send.sh | bash
+      - name: Notify on Failure
+        if: failure()
+        env:
+          BUILD_STATUS: ${{ job.status }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: curl -s https://raw.githubusercontent.com/nebularg/actions-discord-webhook/master/send.sh | bash
