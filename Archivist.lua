@@ -29,7 +29,7 @@ do -- boilerplate, static values, automatic unloader
 	if embedder == addonName then
 		-- Archivist is installed as a standalone addon.
 		-- The Archive is in the default location, ACHV_DB
-		local loader = CreateFrame("frame")
+		local loader = CreateFrame("FRAME")
 		loader:RegisterEvent("ADDON_LOADED")
 		loader:SetScript("OnEvent", function(self, _, addon)
 			if addon == addonName then
