@@ -475,18 +475,18 @@ end
 
 -- opens or creates a storeType, depending on what is appropriate
 -- this is the main entry point for other addons who just want their saved data
-function proto:Load(storeType, id)
+function proto:Load(storeType, id, ...)
 	do -- arg validation
-		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before loading data.")
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Loading data from an unregistered store type doesn't make sense.")
 		self:Assert(id == nil or type(id) == "string", "Store ID must be a string if provided.")
 	end
 
 	if id == nil or not self.sv.stores[storeType][id] then
-		return self:Create(storeType, id)
+		return self:Create(storeType, id, ...)
 	elseif self.activeStores[storeType][id] then
 		return self.activeStores[storeType][id]
 	else
-		return self:Open(storeType, id)
+		return self:Open(storeType, id, ...)
 	end
 end
 
