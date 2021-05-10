@@ -1,7 +1,7 @@
 <Ui>
 	<!-- Externals -->
 	<Script file="libs\LibStub\LibStub.lua"/>
-	<Script file="libs\LibDeflate\LibDeflate.lua"/>
+	<Include file="libs\LibDeflate\lib.xml"/>
 	<Include file="libs\LibSerialize\lib.xml"/>
 	<!-- Main code -->
 	<Script file="Archivist.lua"/>

@@ -8,13 +8,4 @@
 ## SavedVariables: ACHV_DB
 ## X-Curse-Project-ID: 354259
 
-# externals
-libs/LibStub/LibStub.lua
-libs/LibDeflate/LibDeflate.lua
-libs/LibSerialize/LibSerialize.lua
-
-Archivist.lua
-
-# builtin stores
-stores/RawData.lua
-stores/ReadOnly.lua
+Archivist.xml
