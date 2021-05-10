@@ -221,6 +221,17 @@ function proto:RegisterStoreType(prototype)
 	self:Warn(doRegister, "Store type %q already exists with a higher version", oldPrototype and oldPrototype.id)
 	if not doRegister then return end
 
+	self.prototypes[prototype.id] = {
+		id = prototype.id,
+		version = prototype.version,
+		Init = prototype.Init,
+		Create = prototype.Create,
+		Update = prototype.Update,
+		Open = prototype.Open,
+		Commit = prototype.Commit,
+		Close = prototype.Close,
+		Delete = prototype.Delete
+	}
 	self.activeStores[prototype.id] = self.activeStores[prototype.id] or {}
 	self.sv.stores[prototype.id] = self.sv.stores[prototype.id] or {}
 	-- if prototype was previously registered, then there may be open stores of the old prototype.
@@ -329,10 +340,10 @@ function proto:Delete(storeType, id, force)
 	end
 
 	if id and storeType and self.sv.stores[storeType] then
-		if self.prototypes[id] and self.prototypes[id].Delete then
+		if self.prototypes[storeType] and self.prototypes[storeType].Delete and self.sv[storeType][id] then
 			local image = self.activeStores[storeType][id]
 						 and self:Close(self.activeStores[storeType][id])
-						 or self:Dearchive(self.sv.stores[storeType][id])
+						 or self:DeArchive(self.sv.stores[storeType][id].data)
 			self.prototypes[storeType]:Delete(image)
 		end
 		self.sv.stores[storeType][id] = nil
@@ -385,7 +396,7 @@ end
 -- Don't say I didn't warn you
 function proto:DeleteAll(storeType)
 	if storeType then
-		self.sv.stores[storeType] = nil
+		self.sv.stores[storeType] = {}
 		for id, store in pairs(self.activeStores[storeType]) do
 			self.activeStores[storeType][id] = nil
 			self.storeMap[store] = nil

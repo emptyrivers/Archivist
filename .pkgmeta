@@ -6,4 +6,4 @@ externals:
     tag: v1.0.0
 
 ignore:
-	- README.md
+  - README.md
