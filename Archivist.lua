@@ -170,7 +170,6 @@ end
 
 local function checkPrototype(prototype)
 	Archivist:Assert(type(prototype) == "table", "Invalid argument #1 to RegisterStoreType: Expected table, got %q instead.", type(prototype))
-	-- prototype is now guaranteed to be indexable
 	Archivist:Assert(type(prototype.id) == "string", "Invalid prototype field 'id': Expected string, got %q instead.", type(prototype.id))
 	Archivist:Assert(type(prototype.version) == "number", "Invalid prototype field 'version': Expected number, got %q instead.", type(prototype.version))
 	if Archivist:Warn(prototype.version > 0 and prototype.version == math.floor(prototype.version),
@@ -184,9 +183,11 @@ local function checkPrototype(prototype)
 	Archivist:Assert(type(prototype.Commit) == "function", "Invalid prototype field 'Commit': Expected function, got %q instead.", type(prototype.Commit))
 	Archivist:Assert(type(prototype.Close) == "function", "Invalid prototype field 'Close': Expected function, got %q instead.", type(prototype.Close))
 	Archivist:Assert(prototype.Delete == nil or type(prototype.Delete) == "function", "Invalid prototype field 'Delete': Expected function, got %q instead.", type(prototype.Delete))
-	-- prototype is now guaranteed to have Init, Create, Open, Update functions, and is thus well-formed.
 end
 
+-- Register a default store type, which is registered with all initialized archives simultaneously
+-- prototype is required to be the same shape as with RegisterStoreType
+-- Intended for internal use, but made available on the off chance that someone finds a use for this
 function Archivist:RegisterDefaultStoreType(prototype)
 	checkPrototype(prototype)
 
@@ -201,9 +202,9 @@ function Archivist:RegisterDefaultStoreType(prototype)
 	end
 end
 
--- register a (default) store type with Archivist
+-- register a store type with Archivist
 -- prototype fields:
---  id - unique identifier. Preferably also a descriptive name, like "simple" or "snapshot".
+--  id - unique identifier. Preferably also a descriptive name e.g. "ReadOnly" or "RawData".
 --  version - positive integer. Used for version control, in case any data migrations are needed. Registration will fail if the prototype is outdated.
 --  Init - function (optional). If provided, executes exactly once per session, before any other methods are called.
 --  Create - function (required). Create a brand new active store object.
@@ -212,7 +213,7 @@ end
 --  Commit - function (required). Return an image of the data that should be archived.
 --  Close - function (required). Release ownership of active store object. Optionally, return image of data to write into archive.
 --  Delete - function (optional). If provided, called when a store is deleted. Useful for cleaning up sub stores.
--- Please note that Create, Open, Update (if provided), Commit, Close, Delete may be called at any time if Archivist deems it necessary.
+-- Please note that Create, Open, Update, Commit, Close, Delete may be called at any time if Archivist deems it necessary.
 -- Thus, these methods should ideally be as close to purely functional as is practical, to minimize friction.
 function proto:RegisterStoreType(prototype)
 	checkPrototype(prototype)
@@ -294,6 +295,7 @@ function proto:Create(storeType, id, ...)
 end
 
 -- clones archived data and/or active store object to newId
+-- if newId is not provided, then a random id will be generated
 -- also provides an active store object of the cloned data if openStore is set
 function proto:Clone(storeType, id, newId, openStore)
 	do -- arg validation
