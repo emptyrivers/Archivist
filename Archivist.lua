@@ -513,7 +513,8 @@ do -- data compression
 	function proto:DeArchive(encoded)
 		local compressed = LibDeflate:DecodeForPrint(encoded)
 		local serialized = LibDeflate:DecompressDeflate(compressed)
-		local data = LibSerialize:Deserialize(serialized)
+		local success, data = LibSerialize:Deserialize(serialized)
+		self:Assert(success, "Error when deserializing data: %q", data)
 		return data
 	end
 end
