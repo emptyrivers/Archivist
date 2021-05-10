@@ -101,6 +101,7 @@ end
 function Archivist:Initialize(sv, prototypes)
 	do -- arg validation
 		self:Assert(type(sv) == "table", "Invalid argument #1 to Initialize, expected table but got %q.", type(sv))
+		self:Assert(type(sv.internalVersion) ~= "number" or sv.internalVersion <= self.internalVersion, "Invalid argument #1 to Initialize, savedvariable is encoded using a newer version of Archivist. Please upgrade this installation if possible.")
 		self:Assert(prototypes == nil or type(prototypes) == "table", "Invalid argument #2 to Initialize, expected table or nil but got %q", type(prototypes))
 	end
 	if self:IsInitialized(sv) then
