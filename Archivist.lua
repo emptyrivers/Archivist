@@ -506,18 +506,19 @@ do -- data compression
 	local LibDeflate = LibStub("LibDeflate")
 	local LibSerialize = LibStub("LibSerialize")
 
-	function proto:Archive(data)
+	function Archivist:Archive(data)
 		local serialized = LibSerialize:SerializeEx(serializeConfig, data)
 		local compressed = LibDeflate:CompressDeflate(serialized)
 		local encoded = LibDeflate:EncodeForPrint(compressed)
 		return encoded
 	end
-
-	function proto:DeArchive(encoded)
+	proto.Archive = Archivist.Archive
+	function Archivist:DeArchive(encoded)
 		local compressed = LibDeflate:DecodeForPrint(encoded)
 		local serialized = LibDeflate:DecompressDeflate(compressed)
 		local success, data = LibSerialize:Deserialize(serialized)
 		self:Assert(success, "Error when deserializing data: %q", data)
 		return data
 	end
+	proto.DeArchive = Archivist.DeArchive
 end
