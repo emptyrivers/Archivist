@@ -1,4 +1,14 @@
 package-as: Archivist
 
+externals:
+  Archivist/libs/LibSerialize:
+    url: https://github.com/rossnichols/LibSerialize
+    tag: latest
+  Archivist/libs/LibDeflate:
+    url: https://github.com/SafeteeWoW/LibDeflate
+    tag: latest
+
 ignore:
   - README.md
+  - Archivist/libs/LibDeflate/docs
+  - Archivist/libs/LibDeflate/examples

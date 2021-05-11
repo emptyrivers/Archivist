@@ -9,6 +9,7 @@ globals = {
 	"CreateFrame",
 	"geterrorhandler",
 	"LibStub",
+	"Mixin",
 	"strsplit",
 	"tInvert",
 	"time",

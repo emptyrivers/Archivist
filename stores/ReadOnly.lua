@@ -40,4 +40,4 @@ local prototype = {
   end,
 }
 
-Archivist:RegisterStoreType(prototype)
+Archivist:RegisterDefaultStoreType(prototype)
