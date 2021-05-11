@@ -1,4 +1,4 @@
-local Archivist = select(2, ...)
+local Archivist = select(2, ...).Archivist
 
 -- old deserialization code, here to extract data that we'll reserialize with LibSerialize
 local escape2unused = {
@@ -83,13 +83,16 @@ local function deserialize(value)
 end
 
 local LibDeflate = LibStub("LibDeflate")
+for k, v in pairs(Archivist) do print(k, v) end
 Archivist:RegisterMigration(2, function(archive)
 	-- move data one level down,
 	-- so that we can add more data to the sv
 	local data = {}
 	for k, v in pairs(archive.sv) do
-		data[k] = v
-		archive.sv[k] = nil
+		if type(v) == "table" then
+			data[k] = v
+			archive.sv[k] = nil
+		end
 	end
 	archive.sv.stores = data
 	-- and also re-encode data with LibSerialize

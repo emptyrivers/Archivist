@@ -9,5 +9,5 @@
 	<Script file="stores\RawData.lua"/>
 	<Script file="stores\ReadOnly.lua"/>
 	<!-- Migrations -->
-	<Script file="migrations\2.0.lua"/>
+	<Script file="migrations\add_libserialize.lua"/>
 </Ui>

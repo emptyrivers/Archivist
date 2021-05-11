@@ -19,6 +19,7 @@ do -- boilerplate, static values, automatic unloader
 	Archivist.migrations = {}
 	Archivist.defaultStoreTypes = {}
 	namespace.Archivist = Archivist
+	_G.ACHV = Archivist
 	local unloader = CreateFrame("FRAME")
 	unloader:RegisterEvent("PLAYER_LOGOUT")
 	unloader:SetScript("OnEvent", function()
