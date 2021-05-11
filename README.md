@@ -10,12 +10,13 @@ Archivist is a flexible data storage service for WoW AddOns. It is designed espe
 		- [Getting Started](#getting-started)
 		- [Included Store Types](#included-store-types)
 		- [Embedding the Archivist](#embedding-the-archivist)
+	- [Managing Multiple Archives](#managing-multiple-archives)
 	- [Custom Store Types](#custom-store-types)
 		- [Store Type Methods Should be Functional](#store-type-methods-should-be-functional)
 		- [Re-registering prototypes](#re-registering-prototypes)
 	- [Performance](#performance)
 	- [Full API List](#full-api-list)
-	- [Limitations and "Gotchas"](#limitations-and-%22gotchas%22)
+	- [Limitations and "Gotchas"](#limitations-and-gotchas)
 		- [Archivist Modifies Your Addon's Namespace](#archivist-modifies-your-addons-namespace)
 		- [Archivist Can't Store Everything](#archivist-cant-store-everything)
 		- [Archivist is Not a Library](#archivist-is-not-a-library)
@@ -72,13 +73,15 @@ Archivist comes prepackaged with some basic store types, both for your convenien
 
 - RawData
   - A simple table with no extra bells or whistles. The contents of this table are stored directly into the archive when this archive is committed or closed.
+- Readonly
+  - Identical to RawData, except that Commit & Close methods don't do anything. This causes Archivist to never overwrite data in the savedvariables for these stores, once created.
 
 ### Embedding the Archivist
 
 In most use cases, you will want to embed Archivist, so that your addon's archive does not intersect with that of any other addon. Embedding the Archivist into your addon is very similar, but a few more steps are needed. First, create an archive addon:
 
 ```lua
-## Interface: 90000
+## Interface: 90005
 ## Title: MyArchive
 ## LoadOnDemand: 1
 ## SavedVariables: MyArchiveSaved
@@ -90,7 +93,7 @@ Archivist follows the library standard (though it is [not a library](#archivist-
 
 First, include Archivist as an external in your .pkgmeta file:
 
-```
+```yml
 externals:
   MyAddon/Embeds/Archivist: https://github.com/emptyrivers/Archivist
 ```
@@ -119,12 +122,35 @@ local Archivist = ns.Archivist
 
 -- when you have need to access the archive, then load the data...
 LoadAddOn("MyArchive")
--- and initialize Archivist with your archive.
-Archivist:Initialize(MyArchiveSaved)
+-- and have Archivist initialize your archive.
+local archive = Archivist(MyArchiveSaved)
 
 ```
 
 Now, you may use the Archivist just like you would if it had been installed in a standalone form.
+
+## Managing Multiple Archives
+
+Starting with version 2.0, Archivist supports management of multiple savedvariables with a single embed.
+
+**NOTE**: this is a breaking change if you are upgrading from a tag earlier than v2.0.0. Specifically, the following change is needed:
+
+```lua
+local Archivist = select(2, ...).Archivist
+
+Archivist:Initialize(MyArchiveSaved) -- Bad! the Archivist is no longer itself an archive
+local store = Archivist:Load(...) -- attempt to call method "Load" (a nil value)
+
+local archive = Archivist:Initialize(MyArchiveSaved) -- Good!
+local store = archive:Load("RawData", "MyStore")
+
+local otherArchive = Archivist(MyOtherArchiveSaved) -- for your convenience, Archivist has a __call metamethod that points to Initialize
+
+local otherStore = otherArchive:Load("RawData", "MyStore")
+
+assert(store ~= otherStore) -- since they were loaded from different archives, these stores will always be independent from one another
+
+```
 
 ## Custom Store Types
 
@@ -136,10 +162,11 @@ local prototpye = {
 	version = 1,
 	Init = function() end, 
 	Create = function(...) end,
-	Open = function(data) end,
-	Update = function(data) end,
+	Open = function(image) end,
+	Update = function(image) end,
 	Commit = function(store) end,
 	Close = function(store) end,
+	Delete = function(image) end,
 }
 
 Archivist:RegisterStoreType(prototype)
@@ -169,6 +196,8 @@ Prototype methods:
 - Close
   - Deactivate store. Returned value will be written to archive. If no update to archive is needed, then return nil.
   - Once close is called on a store, Archivist will not update the archived data again unless the store is opened.
+- Delete
+  - Called after store is closed & no longer exists in SV. Useful for deleting any dependent stores.
 
 ### Store Type Methods Should be Functional
 
@@ -200,76 +229,76 @@ To circumvent this, consider breaking your data into chunks (ideally into chunks
 -- Main API
 
 -- Opens (or creates) the given store. This is the main entry point for your addon's code.
-store = Archivist:Load(storeType, storeID)
+store = archive:Load(storeType, storeID)
 -- or... (though rarely useful - if storeID is nil then Load is an alias for Create)
-store, storeID = Archivist:Load(storeType)
+store, storeID = archive:Load(storeType)
 
 -- Register store type. Store type must be registered before an archive can be accessed. All verbs will raise an error if called with an unregistered storeType.
-Archivist:RegisterStoreType(prototype)
+archive:RegisterStoreType(prototype)
 
 
 -- Archivist verbs
 -- 	These are the main "actions" that archivist knows how to do.
 
 -- Creates a new archive, and returns an active store object. Raises an error if archive already exists. In most cases you'll want to use Load instead.
-store = Archivist:Create(storeType, storeID, ...)
+store = archive:Create(storeType, storeID, ...)
 -- or... (though rarely useful)
-store, storeID = Archivist:Create(storeType)
+store, storeID = archive:Create(storeType)
 
 -- Opens an archive, and returns active store object. Raises an error if archive doesn't yet exist. In most cases you'll want to use Load instead.
-store = Archivist:Open(storeType, storeID)
+store = archive:Open(storeType, storeID)
 
 -- Commit to archive without closing store. This will cause a change in the archive.
 -- 	Store is still considered open after committing it.
-Archivist:CommitStore(store)
+archive:CommitStore(store)
 -- or...
-Archivist:Commit(storeType, storeID)
+archive:Commit(storeType, storeID)
 
 -- Closes a store. Once closed, you may discard the store object.
 -- 	May also update archive, depending on the store type. Once closed, you should consider the store object obsolete.
 -- 	Occurs automatically on PLAYER_LOGOUT.
-Archivist:CloseStore(store)
+archive:CloseStore(store)
 -- or...
-Archivist:Close(storeType, storeID)
+archive:Close(storeType, storeID)
 -- Note: once a store is closed, manipulating the old store object is considered outside of the Archivist specification, and behavior depends on the store type implementation. However, any changes after Close will *never* be archived
 
 -- Check if a store exists.
 -- 	This verb is intended for performance-critical operations, where you only need to ensure that the store exists. Guaranteed to never call Archive/DeArchive, or invoke any prototype methods.
 -- Returns true if data for the given storeID exists in the archive, or an active store object exists.
 -- Otherwise, returns false.
-storeExists = Archivist:Check(storeType, storeID)
+storeExists = archive:Check(storeType, storeID)
 
 -- Close and delete store permanently. Use ONLY if you are absolutely sure you don't want the data anymore. Archivist cannot help you retrieve lost data once you invoke this.
 -- 	If force is truthy, then the Delete will go through even if the store type is not registered. This is useful if you decide to drop support for a storeType.
-Archivist:DeleteStore(store, force)
+archive:DeleteStore(store, force)
 -- or...
-Archivist:Delete(storeType, storeID, force)
+archive:Delete(storeType, storeID, force)
 -- or... (if you want to delete everything)
 -- If storeType is given, then all stores of that type are deleted. If storeType is not given, then all stores in the entire archive are deleted. This is provided to assist in cases like, "the user wishes to destroy all data and start fresh".
 -- USE WITH CAUTION. YOUR DATA WILL BE LOST. YOU WILL NOT GET A SECOND CHANCE.
-Archivist:DeleteAll(storetype)
+archive:DeleteAll(storetype)
 
 -- Create identical but independent copy of archive. If openstore is truthy, then also Opens the cloned archive and returns active store object.
-store = Archivist:CloneStore(store, openStore)
+store = archive:CloneStore(store, openStore)
 -- or...
-store = Archivist:Clone(storeType, storeID, openStore)
+store = archive:Clone(storeType, storeID, openStore)
 
 
 -- Plumbing Methods
 -- 	The following methods are used internally, and are usually not useful for addons using the Archivist.
 
 -- Generate a random uuid. Used when Create is called without providing a storeID
-uuid = Archivist:GenerateID()
+uuid = archive:GenerateID()
 
 -- Compress data. Data passed in is not touched in any way, and calling code may retain ownership.
-compressedString = Archivist:Archive(data)
+compressedString = archive:Archive(data)
 
 -- Decompress data. String is expected to have been compressed using Archivist:Archive.
 -- 	Compressing, and then decompressing the same data is essentially an expensive clone operation.
-data = Archivist:DeArchive(compressedString)
+data = archive:DeArchive(compressedString)
 
 -- Close all stores immediately. Automatically called on PLAYER_LOGOUT. Not usually useful for addons using 
-Archivist:CloseAllStores()
+archive:CloseAllStores()
 
 ```
 
