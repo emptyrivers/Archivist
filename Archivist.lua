@@ -38,6 +38,7 @@ do -- boilerplate, static values, automatic unloader
 					ACHV_DB = {}
 				end
 				_G.Archivist = Archivist(ACHV_DB)
+				_G.ACV = Archivist -- so that standalone users can play with multi-archive mode
 				self:UnregisterEvent("ADDON_LOADED")
 			end
 		end)
