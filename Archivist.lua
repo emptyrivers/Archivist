@@ -406,7 +406,9 @@ function proto:DeleteAll(storeType)
 			self.storeMap[store] = nil
 		end
 	else
-		self.sv = {}
+		for id in pairs(self.sv.stores) do
+			self.sv.stores[id] = {}
+		end
 		self.activeStores = {}
 		self.storeMap = {}
 	end
