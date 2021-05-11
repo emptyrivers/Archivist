@@ -89,7 +89,7 @@ Archivist:RegisterMigration(2, function(archive)
 	-- so that we can add more data to the sv
 	local data = {}
 	for k, v in pairs(archive.sv) do
-		if type(v) == "table" then
+		if type(v) == "table" and k ~= "stores" and k ~= "internalVersion" then
 			data[k] = v
 			archive.sv[k] = nil
 		end
