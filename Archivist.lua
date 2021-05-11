@@ -345,7 +345,7 @@ function proto:Delete(storeType, id, force)
 	end
 
 	if id and storeType and self.sv.stores[storeType] then
-		if self.prototypes[storeType] and self.prototypes[storeType].Delete and self.sv[storeType][id] then
+		if self.prototypes[storeType] and self.prototypes[storeType].Delete and self.sv.stores[storeType][id] then
 			local image = self.activeStores[storeType][id]
 						 and self:Close(self.activeStores[storeType][id])
 						 or self:DeArchive(self.sv.stores[storeType][id].data)
