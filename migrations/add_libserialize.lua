@@ -83,7 +83,7 @@ local function deserialize(value)
 end
 
 local LibDeflate = LibStub("LibDeflate")
-Archivist:RegisterMigration(2, function(archive)
+Archivist:RegisterMigration(1, function(archive)
 	-- move data one level down,
 	-- so that we can add more data to the sv
 	local data = {}

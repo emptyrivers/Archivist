@@ -14,7 +14,7 @@ local addonName, Archivist = "Archivist", {}
 do -- boilerplate, static values, automatic unloader
 	Archivist.buildDate = "@build-time@"
 	Archivist.version = "@project-version@"
-	Archivist.internalVersion = 2
+	Archivist.internalVersion = 1
 	Archivist.archives = {}
 	Archivist.migrations = {}
 	Archivist.defaultStoreTypes = {}
@@ -138,20 +138,20 @@ end
 -- register a migration to upgrade archivist version
 function Archivist:RegisterMigration(version, migration)
 	do -- arg validation
-		self:Assert(type(version) == "number" and version <= self.internalVersion and version % 1 == 0 and self.migrations[version] == nil,
-			"Migration version should be valid integer")
+		self:Assert(type(version) == "number" and version <= self.internalVersion and version % 1 == 0, "Migration version should be valid integer")
+		self:Assert(self.migrations[version] == nil, "Migration %d already exists.", version)
 		self:Assert(type(migration) == "function", "Migration should be a function")
 	end
 	self.migrations[version] = migration
 end
 
 function Archivist:DoMigration(archive)
-	for i = archive.sv.internalVersion or 1, self.internalVersion do
+	for i = (archive.sv.internalVersion or 0) + 1, self.internalVersion do
 		if self.migrations[i] then
 			self.migrations[i](archive)
 		end
+		archive.sv.internalVersion = i
 	end
-	archive.sv.internalVersion = self.internalVersion
 end
 
 -- also make Initialize available via __call
