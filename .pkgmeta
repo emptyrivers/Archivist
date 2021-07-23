@@ -1,15 +1,4 @@
 package-as: Archivist
 
-externals:
-  libs/LibSerialize:
-    url: https://github.com/rossnichols/LibSerialize
-    tag: latest
-  libs/LibDeflate:
-    url: https://github.com/SafeteeWoW/LibDeflate
-    tag: latest
-  libs/LibStub: https://repos.curseforge.com/wow/libstub/trunk
-
 ignore:
   - README.md
-  - Archivist/libs/LibDeflate/docs
-  - Archivist/libs/LibDeflate/examples
