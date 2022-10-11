@@ -264,8 +264,7 @@ end
 -- produces storable data from image
 function proto:Wind(storeType, image)
 	do -- arg validation
-		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before loading data.")
-		self:Assert(image ~= nil, "Cannot wind nil data")
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before winding data.")
 	end
 
 	if self.prototypes[storeType].Wind then
@@ -277,8 +276,7 @@ end
 
 function proto:Unwind(storeType, woundImage)
 	do -- arg validation
-		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before loading data.")
-		self:Assert(woundImage ~= nil, "Cannot unwind nil data")
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before unwinding data.")
 	end
 
 	if self.prototypes[storeType].Unwind then
