@@ -167,6 +167,8 @@ local prototpye = {
 	Commit = function(store) end,
 	Close = function(store) end,
 	Delete = function(image) end,
+	Wind = function(image) end,
+	Unwind = function(woundImage) end,
 }
 
 Archivist:RegisterStoreType(prototype)
@@ -193,6 +195,10 @@ Prototype methods:
   - Optional function. If provided, then archived data is replaced with the return value of Update. If no change is needed, then return nil.
 - Commit
   - Return image of data to be archived
+- Wind/Unwind
+  - Optional functions. If provided, these are used instead of Archive/DeArchive to transfer data to/from a storable/openable state.
+  - It is an error to provide one, but not both, of Wind/Unwind.
+  - Useful for when a mixed archive is desirable (e.g. so that the savedvariables are legible without spinning up Archivist for debug/support reasons)
 - Close
   - Deactivate store. Returned value will be written to archive. If no update to archive is needed, then return nil.
   - Once close is called on a store, Archivist will not update the archived data again unless the store is opened.
@@ -286,6 +292,12 @@ store = archive:Clone(storeType, storeID, openStore)
 
 -- Plumbing Methods
 -- 	The following methods are used internally, and are usually not useful for addons using the Archivist.
+
+-- transforms savedvariables data into image suitable for Open()
+image = archive:Unwind(storeType, woundImage)
+
+-- transforms image suitable for Open() into data to be stored in savedvariables
+woundImage = archive:Wind(storetype, image)
 
 -- Generate a random uuid. Used when Create is called without providing a storeID
 uuid = archive:GenerateID()
