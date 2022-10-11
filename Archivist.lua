@@ -404,7 +404,7 @@ function proto:Open(storeType, id, ...)
 	local store = self.activeStores[storeType][id]
 	if not store then
 		local saved = self.sv.stores[storeType][id]
-		local data = self:Unwind(saved.data)
+		local data = self:Unwind(storeType, saved.data)
 		local prototype = self.prototypes[storeType]
 		-- migrate data...
 		if prototype.Update and prototype.version > saved.version then
