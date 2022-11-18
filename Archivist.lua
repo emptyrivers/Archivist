@@ -184,6 +184,8 @@ local function checkPrototype(prototype)
 	Archivist:Assert(type(prototype.Commit) == "function", "Invalid prototype field 'Commit': Expected function, got %q instead.", type(prototype.Commit))
 	Archivist:Assert(type(prototype.Close) == "function", "Invalid prototype field 'Close': Expected function, got %q instead.", type(prototype.Close))
 	Archivist:Assert(prototype.Delete == nil or type(prototype.Delete) == "function", "Invalid prototype field 'Delete': Expected function, got %q instead.", type(prototype.Delete))
+	Archivist:Assert(prototype.Wind == nil or type(prototype.Wind) == "function", "Invalid prototype field 'Wind': Expected function, got %q instead.", type(prototype.Wind))
+	Archivist:Assert(type(prototype.Wind) == type(prototype.Unwind), "Mismatched prototype fields 'Wind'/'Unwind': Expected nil/nil or function/function, got %q/%q instead.", type(prototype.Wind), type(prototype.Unwind))
 end
 
 -- Register a default store type, which is registered with all initialized archives simultaneously
@@ -214,7 +216,9 @@ end
 --  Commit - function (required). Return an image of the data that should be archived.
 --  Close - function (required). Release ownership of active store object. Optionally, return image of data to write into archive.
 --  Delete - function (optional). If provided, called when a store is deleted. Useful for cleaning up sub stores.
--- Please note that Create, Open, Update, Commit, Close, Delete may be called at any time if Archivist deems it necessary.
+--  Wind - function (optional). Winds an image into a format ready to be stored by Archivist. If provided, must also provide Unwind.
+--  Unwind - function (optional). Unwinds data stored by Archivist into an image ready to be Opened. If provided, must also provide Wind.
+-- Please note that Create, Open, Update, Commit, Close, Delete, Wind, Unwind may be called at any time if Archivist deems it necessary.
 -- Thus, these methods should ideally be as close to purely functional as is practical, to minimize friction.
 function proto:RegisterStoreType(prototype)
 	checkPrototype(prototype)
@@ -233,7 +237,9 @@ function proto:RegisterStoreType(prototype)
 		Open = prototype.Open,
 		Commit = prototype.Commit,
 		Close = prototype.Close,
-		Delete = prototype.Delete
+		Delete = prototype.Delete,
+		Wind = prototype.Wind,
+		Unwind = prototype.Unwind,
 	}
 	self.activeStores[prototype.id] = self.activeStores[prototype.id] or {}
 	self.sv.stores[prototype.id] = self.sv.stores[prototype.id] or {}
@@ -252,6 +258,31 @@ function proto:RegisterStoreType(prototype)
 	end
 	for storeId in pairs(toOpen) do
 		self:Open(prototype.id, storeId)
+	end
+end
+
+-- produces storable data from image
+function proto:Wind(storeType, image)
+	do -- arg validation
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before winding data.")
+	end
+
+	if self.prototypes[storeType].Wind then
+		return self.prototypes[storeType]:Wind(image)
+	else
+		return self:Archive(image)
+	end
+end
+
+function proto:Unwind(storeType, woundImage)
+	do -- arg validation
+		self:Assert(type(storeType) == "string" and self.prototypes[storeType], "Store type must be registered before unwinding data.")
+	end
+
+	if self.prototypes[storeType].Unwind then
+		return self.prototypes[storeType]:Unwind(woundImage)
+	else
+		return self:DeArchive(woundImage)
 	end
 end
 
@@ -289,7 +320,7 @@ function proto:Create(storeType, id, ...)
 	self.sv.stores[storeType][id] = {
 		timestamp = time(),
 		version = self.prototypes[storeType].version,
-		data = self:Archive(image)
+		data = self:Wind(storeType, image)
 	}
 
 	return store, id
@@ -347,7 +378,7 @@ function proto:Delete(storeType, id, force)
 		if self.prototypes[storeType] and self.prototypes[storeType].Delete and self.sv.stores[storeType][id] then
 			local image = self.activeStores[storeType][id]
 						 and self:Close(self.activeStores[storeType][id])
-						 or self:DeArchive(self.sv.stores[storeType][id].data)
+						 or self:Unwind(storeType, self.sv.stores[storeType][id].data)
 			self.prototypes[storeType]:Delete(image)
 		end
 		self.sv.stores[storeType][id] = nil
@@ -371,13 +402,13 @@ function proto:Open(storeType, id, ...)
 	local store = self.activeStores[storeType][id]
 	if not store then
 		local saved = self.sv.stores[storeType][id]
-		local data = self:DeArchive(saved.data)
+		local data = self:Unwind(storeType, saved.data)
 		local prototype = self.prototypes[storeType]
 		-- migrate data...
 		if prototype.Update and prototype.version > saved.version then
 			local newData = prototype:Update(data, saved.version)
 			if newData ~= nil then
-				saved.data = self:Archive(newData)
+				saved.data = self:Wind(storeType, newData)
 				saved.timestamp = time()
 			end
 			saved.version = prototype.version
@@ -426,7 +457,7 @@ function proto:Close(storeType, id)
 	if store then
 		local image = self.prototypes[storeType]:Close(store)
 		if image ~= nil then
-			saved.data = self:Archive(image)
+			saved.data = self:Wind(storeType, image)
 			saved.timestamp = time()
 		end
 		self.activeStores[storeType][id] = nil
@@ -447,7 +478,7 @@ function proto:CloseAllStores()
 			local saved = self.sv.stores[storeType][id]
 			self.activeStores[storeType] = nil
 			if image then
-				saved.data = self:Archive(image)
+				saved.data = self:Wind(storeType,image)
 				saved.timestamp = time()
 			end
 		end
@@ -465,7 +496,7 @@ function proto:Commit(storeType, id)
 	local image = self.prototypes[storeType]:Commit(store)
 	local saved = self.sv.stores[storeType][id]
 	if image ~= nil then
-		saved.data = self:Archive(image)
+		saved.data = self:Wind(storeType, image)
 		saved.timestamp = time()
 	end
 end
