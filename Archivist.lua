@@ -14,7 +14,7 @@ local addonName, Archivist = "Archivist", {}
 do -- boilerplate, static values, automatic unloader
 	Archivist.buildDate = "@build-time@"
 	Archivist.version = "@project-version@"
-	Archivist.internalVersion = 1
+	Archivist.internalVersion = 2
 	Archivist.archives = {}
 	Archivist.migrations = {}
 	Archivist.defaultStoreTypes = {}
@@ -65,10 +65,6 @@ function Archivist:Warn(valid, pattern, ...) -- Like assert, but doesn't interru
 		return true
 	end
 end
-
-local serializeConfig = {
-	errorOnUnserializableType = false
-}
 
 -- prototype used to create archives
 local proto = {}
@@ -536,21 +532,18 @@ function proto:Check(storeType, id)
 end
 
 do -- data compression
-	local LibDeflate = LibStub("LibDeflate")
-	local LibSerialize = LibStub("LibSerialize")
-
 	function Archivist:Archive(data)
-		local serialized = LibSerialize:SerializeEx(serializeConfig, data)
-		local compressed = LibDeflate:CompressDeflate(serialized)
-		local encoded = LibDeflate:EncodeForPrint(compressed)
+		local serialized = C_EncodingUtil.SerializeCBOR(data)
+		local compressed = C_EncodingUtil.CompressString(serialized)
+		local encoded = C_EncodingUtil.EncodeBase64(compressed)
 		return encoded
 	end
 	proto.Archive = Archivist.Archive
 	function Archivist:DeArchive(encoded)
-		local compressed = LibDeflate:DecodeForPrint(encoded)
-		local serialized = LibDeflate:DecompressDeflate(compressed)
-		local success, data = LibSerialize:Deserialize(serialized)
-		self:Assert(success, "Error when deserializing data: %q", data)
+		local compressed = C_EncodingUtil.DecodeBase64(encoded)
+		local serialized = C_EncodingUtil.DecompressString(compressed)
+		local data = C_EncodingUtil.DeserializeCBOR(serialized)
+		self:Assert(data ~= nil, "Error when deserializing data")
 		return data
 	end
 	proto.DeArchive = Archivist.DeArchive
